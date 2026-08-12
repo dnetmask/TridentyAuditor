@@ -13,19 +13,12 @@ class DocumentCreate(BaseModel):
     control_id: uuid.UUID | None = None
     retention_months: int | None = Field(default=None, ge=1)
     storage_ref: str = Field(min_length=1, max_length=500)
-    created_by: str = Field(min_length=1, max_length=255)
     change_summary: str | None = None
 
 
 class NewVersionCreate(BaseModel):
     storage_ref: str = Field(min_length=1, max_length=500)
-    created_by: str = Field(min_length=1, max_length=255)
     change_summary: str | None = None
-
-
-class ReviewDecision(BaseModel):
-    actor: str = Field(min_length=1, max_length=255)
-    comment: str | None = None
 
 
 class DocumentVersionRead(BaseModel):

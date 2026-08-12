@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.database import Base
 
 # Import models so they register on Base.metadata before autogenerate/create.
+from app.auth import models as auth_models  # noqa: F401
 from app.documents import models as documents_models  # noqa: F401
 from app.frameworks import models as frameworks_models  # noqa: F401
 from app.tenants import models as tenants_models  # noqa: F401

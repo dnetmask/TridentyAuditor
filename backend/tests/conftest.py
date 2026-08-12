@@ -9,7 +9,6 @@ os.environ.setdefault(
     "postgresql+psycopg2://tridenty:tridenty@localhost:5432/tridentyauditor_test",
 )
 os.environ.setdefault("TRIDENTY_JWT_SECRET", "test-secret")
-os.environ.setdefault("TRIDENTY_ADMIN_BOOTSTRAP_TOKEN", "test-admin-token")
 
 import jwt
 import pytest
@@ -51,35 +50,22 @@ def client():
 
 
 @pytest.fixture()
-def admin_headers():
-    return {"X-Admin-Token": os.environ["TRIDENTY_ADMIN_BOOTSTRAP_TOKEN"]}
-
-
-@pytest.fixture()
-def make_tenant(client, admin_headers):
-    def _make(name: str = "Tenant de prueba", slug: str | None = None):
-        slug = slug or f"tenant-{uuid.uuid4().hex[:8]}"
-        resp = client.post(
-            "/api/v1/tenants", json={"name": name, "slug": slug}, headers=admin_headers
-        )
-        assert resp.status_code == 201, resp.text
-        return resp.json()
-
-    return _make
-
-
-@pytest.fixture()
 def token_factory():
     from app.core.config import get_settings
 
     settings = get_settings()
 
-    def _make(tenant_id: str, sub: str = "tester", role: str = "tenant_admin") -> str:
-        return jwt.encode(
-            {"tenant_id": tenant_id, "sub": sub, "role": role},
-            settings.jwt_secret,
-            algorithm=settings.jwt_algorithm,
-        )
+    def _make(
+        tenant_id: str | None = None,
+        sub: str | None = None,
+        email: str = "tester@example.com",
+        role: str = "tenant_admin",
+        full_name: str = "Tester",
+    ) -> str:
+        claims = {"sub": sub or str(uuid.uuid4()), "email": email, "full_name": full_name, "role": role}
+        if tenant_id is not None:
+            claims["tenant_id"] = tenant_id
+        return jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
     return _make
 
@@ -87,6 +73,25 @@ def token_factory():
 @pytest.fixture()
 def auth_headers(token_factory):
     def _make(tenant_id: str, **kwargs) -> dict[str, str]:
-        return {"Authorization": f"Bearer {token_factory(tenant_id, **kwargs)}"}
+        return {"Authorization": f"Bearer {token_factory(tenant_id=tenant_id, **kwargs)}"}
+
+    return _make
+
+
+@pytest.fixture()
+def super_admin_headers(token_factory):
+    token = token_factory(tenant_id=None, role="super_admin", email="super@netmask.co", full_name="Super Admin")
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def make_tenant(client, super_admin_headers):
+    def _make(name: str = "Tenant de prueba", slug: str | None = None):
+        slug = slug or f"tenant-{uuid.uuid4().hex[:8]}"
+        resp = client.post(
+            "/api/v1/tenants", json={"name": name, "slug": slug}, headers=super_admin_headers
+        )
+        assert resp.status_code == 201, resp.text
+        return resp.json()
 
     return _make

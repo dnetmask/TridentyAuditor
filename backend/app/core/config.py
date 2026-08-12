@@ -18,10 +18,6 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-me"
     jwt_algorithm: str = "HS256"
 
-    # Guards the tenant-provisioning endpoint until Super Admin auth via
-    # Keycloak is wired up. Temporary — see docs/modules/README.md.
-    admin_bootstrap_token: str = "dev-admin-token-change-me"
-
     # Origins allowed to call the API from a browser (the Vite dev server by
     # default). Comma-separated.
     cors_origins: str = "http://localhost:5173"

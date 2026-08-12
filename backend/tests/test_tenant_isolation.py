@@ -17,7 +17,6 @@ def test_tenant_cannot_read_another_tenants_documents(client, make_tenant, auth_
             "title": "Solo visible para el tenant A",
             "document_type": "policy",
             "storage_ref": "s3://a",
-            "created_by": "tester",
         },
         headers=headers_a,
     )
@@ -45,7 +44,6 @@ def test_tenants_can_reuse_document_codes(client, make_tenant, auth_headers):
         "title": "Mismo código, tenants distintos",
         "document_type": "policy",
         "storage_ref": "s3://same",
-        "created_by": "tester",
     }
     resp_a = client.post("/api/v1/documents", json=payload, headers=auth_headers(tenant_a["id"]))
     resp_b = client.post("/api/v1/documents", json=payload, headers=auth_headers(tenant_b["id"]))

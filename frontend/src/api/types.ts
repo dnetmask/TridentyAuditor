@@ -1,3 +1,5 @@
+export type UserRole = "super_admin" | "tenant_admin" | "internal_auditor" | "viewer";
+
 export type IsolationTier = "pooled" | "isolated";
 
 export interface Tenant {
@@ -99,4 +101,24 @@ export interface PhaseProgress {
   tasks: WizardTask[];
   done_count: number;
   total_count: number;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  tenant_id: string | null;
+  tenant_name: string | null;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  tenant_id: string | null;
+  is_active: boolean;
+  created_at: string;
 }

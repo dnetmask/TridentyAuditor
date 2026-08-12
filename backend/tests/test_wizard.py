@@ -6,16 +6,13 @@ def _approve_document(client, headers, code="EVID-001"):
             "title": "Evidencia de prueba",
             "document_type": "record",
             "storage_ref": "s3://bucket/evid.pdf",
-            "created_by": "tester",
         },
         headers=headers,
     )
     assert resp.status_code == 201, resp.text
     doc_id = resp.json()["id"]
     client.post(f"/api/v1/documents/{doc_id}/versions/1/submit", headers=headers)
-    resp = client.post(
-        f"/api/v1/documents/{doc_id}/versions/1/approve", json={"actor": "ciso"}, headers=headers
-    )
+    resp = client.post(f"/api/v1/documents/{doc_id}/versions/1/approve", headers=headers)
     assert resp.status_code == 200, resp.text
     return doc_id
 
@@ -68,7 +65,6 @@ def test_task_requiring_evidence_blocks_completion_until_approved(client, make_t
             "title": "Aún sin aprobar",
             "document_type": "record",
             "storage_ref": "s3://bucket/draft.pdf",
-            "created_by": "tester",
         },
         headers=headers,
     )

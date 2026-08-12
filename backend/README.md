@@ -30,19 +30,26 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-## Autenticación en desarrollo
+## Autenticación
 
-No hay integración con Keycloak todavía (llega en la Fase 2 de la hoja de
-ruta). Los endpoints de MOD·DOC esperan un JWT HS256 con claims `tenant_id`,
-`sub` y `role`. Para generar uno de prueba:
+Login real con email/contraseña (bcrypt) — no hay integración con Keycloak
+todavía (llega en la Fase 2 de la hoja de ruta), pero ya no hay forma de
+mintar un token sin credenciales. Ver
+[`docs/modules/auth-roles.md`](../docs/modules/auth-roles.md) para el
+modelo completo de roles (Super Admin, Admin del tenant, Auditor interno,
+Visualizador).
+
+La primera cuenta hay que crearla directamente en la base de datos (no
+existe todavía nadie que pueda llamar a `POST /api/v1/auth/users`):
 
 ```bash
-python scripts/make_dev_token.py <tenant-uuid> --sub tester@netmask.co --role tenant_admin
+python scripts/create_super_admin.py admin@netmask.co --name "Nombre Apellido"
 ```
 
-Los endpoints de `/api/v1/tenants` están protegidos con un token simple de
-bootstrap (`X-Admin-Token`, ver `.env.example`) hasta que el rol Super Admin
-Netmask se valide contra Keycloak.
+Con esa cuenta: `POST /api/v1/auth/login` → usa el `access_token` para crear
+tenants (`POST /api/v1/tenants`) y el primer Admin de cada uno
+(`POST /api/v1/auth/users` con `role: tenant_admin`). Cada Admin del tenant
+gestiona desde ahí a sus propios Auditores internos y Visualizadores.
 
 ## Pruebas
 
@@ -65,4 +72,6 @@ La migración `0001_initial_schema` crea el motor de frameworks, `tenants` y
 MOD·DOC, y habilita Row-Level Security (`FORCE ROW LEVEL SECURITY` +
 `CREATE POLICY`) sobre `documents` y `document_versions`, filtrando por
 `current_setting('app.tenant_id')`. Ver `app/core/database.py` para cómo se
-fija ese valor por request.
+fija ese valor por request. `0002_wizard_module` agrega MOD·WZD (misma
+técnica de RLS sobre `tenant_wizard_tasks`) y `0003_auth_users` agrega
+`users` — sin RLS, vive en el plano de control como `tenants`.

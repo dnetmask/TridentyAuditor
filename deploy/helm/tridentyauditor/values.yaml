@@ -35,7 +35,7 @@ env:
 
 # Referencia a un Secret ya existente en el clúster (Vault/External Secrets
 # Operator en producción — sección 05/06) con las claves:
-# database-url, jwt-secret, admin-bootstrap-token
+# database-url, jwt-secret
 existingSecret: tridentyauditor-backend-secrets
 
 migrationJob:

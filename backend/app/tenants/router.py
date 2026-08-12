@@ -5,14 +5,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import require_admin_token
+from app.core.security import require_super_admin
 from app.tenants import schemas
 from app.tenants.models import Tenant
 
 router = APIRouter(
     prefix="/api/v1/tenants",
     tags=["tenants"],
-    dependencies=[Depends(require_admin_token)],
+    dependencies=[Depends(require_super_admin)],
 )
 
 

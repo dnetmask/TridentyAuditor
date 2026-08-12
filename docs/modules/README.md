@@ -7,6 +7,7 @@ frameworks (dominio, control, riesgo, evidencia, hallazgo) — ver
 | Código | Módulo | Fase | Estado | Ficha |
 |---|---|---|---|---|
 | — | Motor de frameworks | 1 | ✅ Implementado | [frameworks-engine.md](frameworks-engine.md) |
+| — | Autenticación y roles | 1 | ✅ Implementado | [auth-roles.md](auth-roles.md) |
 | MOD·DOC | Control documental | 1 | ✅ Implementado | [mod-doc.md](mod-doc.md) |
 | MOD·RSK | Gestión de riesgos | 1 | ⏳ Pendiente | [mod-rsk.md](mod-rsk.md) |
 | MOD·SOA | SoA · Anexo A | 1 | ⏳ Pendiente | [mod-soa.md](mod-soa.md) |

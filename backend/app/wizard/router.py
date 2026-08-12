@@ -4,11 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db
+from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
 from app.wizard import schemas, service
 from app.wizard.service import InvalidTransition, PhaseNotFound, TaskNotFound
 
 router = APIRouter(prefix="/api/v1/wizard", tags=["wizard (MOD·WZD)"])
+
+# Arrancar el ciclo SGSI es una decisión administrativa del tenant.
+can_instantiate = require_tenant_roles("tenant_admin")
+# Trabajar sobre las tareas: Admin del tenant o Auditor interno.
+can_write = require_tenant_roles("tenant_admin", "internal_auditor")
 
 
 @router.get("/phases", response_model=list[schemas.PhaseWithTemplatesRead])
@@ -19,7 +24,7 @@ def list_phases(db: Session = Depends(get_db)):
 @router.post("/instantiate", response_model=schemas.InstantiateResult, status_code=status.HTTP_201_CREATED)
 def instantiate(
     db: Session = Depends(get_tenant_db),
-    principal: TenantPrincipal = Depends(decode_tenant_token),
+    principal: TenantPrincipal = Depends(can_instantiate),
 ):
     created = service.instantiate(db, principal.tenant_id)
     return schemas.InstantiateResult(created=created)
@@ -37,7 +42,7 @@ def get_progress(
 def create_task(
     payload: schemas.TaskCreate,
     db: Session = Depends(get_tenant_db),
-    principal: TenantPrincipal = Depends(decode_tenant_token),
+    principal: TenantPrincipal = Depends(can_write),
 ):
     try:
         return service.create_custom_task(db, principal.tenant_id, **payload.model_dump())
@@ -50,7 +55,7 @@ def update_task(
     task_id: uuid.UUID,
     payload: schemas.TaskUpdate,
     db: Session = Depends(get_tenant_db),
-    principal: TenantPrincipal = Depends(decode_tenant_token),
+    principal: TenantPrincipal = Depends(can_write),
 ):
     try:
         return service.update_task(db, principal.tenant_id, task_id, **payload.model_dump())
@@ -64,7 +69,7 @@ def update_task(
 def complete_task(
     task_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    principal: TenantPrincipal = Depends(decode_tenant_token),
+    principal: TenantPrincipal = Depends(can_write),
 ):
     try:
         return service.complete_task(db, principal.tenant_id, task_id)
@@ -78,7 +83,7 @@ def complete_task(
 def reopen_task(
     task_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    principal: TenantPrincipal = Depends(decode_tenant_token),
+    principal: TenantPrincipal = Depends(can_write),
 ):
     try:
         return service.reopen_task(db, principal.tenant_id, task_id)

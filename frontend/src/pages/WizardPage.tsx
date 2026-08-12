@@ -12,6 +12,8 @@ const PHASE_STATUS_LABEL: Record<string, string> = {
 export function WizardPage() {
   const { session } = useAuth();
   const token = session!.token;
+  const canInstantiate = session!.role === "tenant_admin";
+  const canWrite = session!.role === "tenant_admin" || session!.role === "internal_auditor";
 
   const [progress, setProgress] = useState<PhaseProgress[] | null>(null);
   const [documents, setDocuments] = useState<DocumentDetail[]>([]);
@@ -76,13 +78,17 @@ export function WizardPage() {
       ) : !started ? (
         <div className="card empty-state">
           <p>Este tenant todavía no ha iniciado su ciclo SGSI.</p>
-          <button
-            className="btn btn-primary"
-            disabled={busy}
-            onClick={() => run(() => api.wizardInstantiate(token))}
-          >
-            Comenzar ciclo SGSI
-          </button>
+          {canInstantiate ? (
+            <button
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => run(() => api.wizardInstantiate(token))}
+            >
+              Comenzar ciclo SGSI
+            </button>
+          ) : (
+            <p className="muted">Pídele al Admin del tenant que lo inicie.</p>
+          )}
         </div>
       ) : (
         <div className="wizard-layout">
@@ -127,6 +133,7 @@ export function WizardPage() {
                   task={task}
                   documents={approvedDocuments}
                   busy={busy}
+                  readOnly={!canWrite}
                   onComplete={() => run(() => api.wizardCompleteTask(token, task.id))}
                   onReopen={() => run(() => api.wizardReopenTask(token, task.id))}
                   onUpdate={(payload) => run(() => api.wizardUpdateTask(token, task.id, payload))}
@@ -144,6 +151,7 @@ function TaskRow({
   task,
   documents,
   busy,
+  readOnly,
   onComplete,
   onReopen,
   onUpdate,
@@ -151,6 +159,7 @@ function TaskRow({
   task: WizardTask;
   documents: DocumentDetail[];
   busy: boolean;
+  readOnly: boolean;
   onComplete: () => void;
   onReopen: () => void;
   onUpdate: (payload: { owner?: string | null; due_date?: string | null; evidence_document_id?: string | null }) => void;
@@ -158,13 +167,14 @@ function TaskRow({
   const [owner, setOwner] = useState(task.owner ?? "");
   const [dueDate, setDueDate] = useState(task.due_date ?? "");
   const done = task.status === "done";
+  const fieldsDisabled = done || readOnly;
 
   return (
     <div className="task-row">
       <button
         className={`task-check ${done ? "task-check-done" : ""}`}
-        disabled={busy}
-        title={done ? "Reabrir" : "Marcar como completada"}
+        disabled={busy || readOnly}
+        title={readOnly ? "Tu rol no puede modificar tareas" : done ? "Reabrir" : "Marcar como completada"}
         onClick={done ? onReopen : onComplete}
       >
         {done ? "✓" : ""}
@@ -179,7 +189,7 @@ function TaskRow({
             className="owner-input"
             placeholder="Dueño / responsable"
             value={owner}
-            disabled={done}
+            disabled={fieldsDisabled}
             onChange={(e) => setOwner(e.target.value)}
             onBlur={() => owner !== (task.owner ?? "") && onUpdate({ owner })}
           />
@@ -187,14 +197,14 @@ function TaskRow({
             className="due-input"
             type="date"
             value={dueDate}
-            disabled={done}
+            disabled={fieldsDisabled}
             onChange={(e) => setDueDate(e.target.value)}
             onBlur={() => dueDate !== (task.due_date ?? "") && onUpdate({ due_date: dueDate || null })}
           />
           <select
             className="evidence-select"
             value={task.evidence_document_id ?? ""}
-            disabled={done}
+            disabled={fieldsDisabled}
             onChange={(e) => onUpdate({ evidence_document_id: e.target.value || null })}
           >
             <option value="">— sin evidencia vinculada —</option>

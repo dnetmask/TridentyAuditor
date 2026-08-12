@@ -18,6 +18,7 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 |---|---|---|
 | Motor de frameworks | — | ✅ Esqueleto + seed ISO/IEC 27001:2022 |
 | Multitenencia (tier pooled, RLS) | — | ✅ Esqueleto |
+| Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
 | Control documental | MOD·DOC | ✅ Funcional (CRUD + versionado + aprobación) |
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (8 fases, evidencia obligatoria, desbloqueo por fase) |
 | Gestión de riesgos | MOD·RSK | ⏳ Fase 1, pendiente |
@@ -59,5 +60,8 @@ npm install
 npm run dev
 ```
 
-Ver [`frontend/README.md`](frontend/README.md) para el detalle (incluye cómo
-autenticarse sin Keycloak, que llega en la Fase 2).
+Ver [`frontend/README.md`](frontend/README.md) para el detalle. La primera
+cuenta (Super Admin) se crea con un script de bootstrap — ver
+[`backend/README.md`](backend/README.md#autenticación) y
+[`docs/modules/auth-roles.md`](docs/modules/auth-roles.md) para el modelo de
+roles completo.

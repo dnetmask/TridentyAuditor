@@ -12,13 +12,11 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PATCH";
   body?: unknown;
   token?: string | null;
-  adminToken?: string | null;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
-  if (options.adminToken) headers["X-Admin-Token"] = options.adminToken;
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
@@ -42,19 +40,38 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 }
 
 export const api = {
-  // --- dev-only auth stand-in (Fase 2 lo reemplaza por Keycloak/OIDC) ---
-  mintDevToken: (tenantId: string, sub: string, role: string) =>
-    request<{ access_token: string }>("/api/v1/dev/token", {
+  // --- autenticación ---
+  login: (email: string, password: string) =>
+    request<import("./types").LoginResponse>("/api/v1/auth/login", {
       method: "POST",
-      body: { tenant_id: tenantId, sub, role },
+      body: { email, password },
     }),
 
-  createTenant: (adminToken: string, name: string, slug: string) =>
-    request<import("./types").Tenant>("/api/v1/tenants", {
-      method: "POST",
-      adminToken,
-      body: { name, slug },
-    }),
+  // --- Super Admin: tenants ---
+  createTenant: (token: string, name: string, slug: string) =>
+    request<import("./types").Tenant>("/api/v1/tenants", { method: "POST", token, body: { name, slug } }),
+
+  listTenants: (token: string) => request<import("./types").Tenant[]>("/api/v1/tenants", { token }),
+
+  // --- Usuarios (Super Admin: cualquier tenant · Admin del tenant: el propio) ---
+  listUsers: (token: string) => request<import("./types").User[]>("/api/v1/auth/users", { token }),
+
+  createUser: (
+    token: string,
+    payload: {
+      email: string;
+      password: string;
+      full_name: string;
+      role: import("./types").UserRole;
+      tenant_id?: string | null;
+    },
+  ) => request<import("./types").User>("/api/v1/auth/users", { method: "POST", token, body: payload }),
+
+  updateUser: (
+    token: string,
+    userId: string,
+    payload: { full_name?: string; role?: import("./types").UserRole; is_active?: boolean; password?: string },
+  ) => request<import("./types").User>(`/api/v1/auth/users/${userId}`, { method: "PATCH", token, body: payload }),
 
   // --- motor de frameworks ---
   getFramework: (code: string) =>
@@ -71,7 +88,6 @@ export const api = {
       title: string;
       document_type: string;
       storage_ref: string;
-      created_by: string;
       retention_months?: number | null;
       change_summary?: string | null;
     },
@@ -80,7 +96,7 @@ export const api = {
   createVersion: (
     token: string,
     documentId: string,
-    payload: { storage_ref: string; created_by: string; change_summary?: string | null },
+    payload: { storage_ref: string; change_summary?: string | null },
   ) =>
     request<import("./types").DocumentVersion>(`/api/v1/documents/${documentId}/versions`, {
       method: "POST",
@@ -94,16 +110,16 @@ export const api = {
       { method: "POST", token },
     ),
 
-  rejectVersion: (token: string, documentId: string, versionNumber: number, actor: string) =>
+  rejectVersion: (token: string, documentId: string, versionNumber: number) =>
     request<import("./types").DocumentVersion>(
       `/api/v1/documents/${documentId}/versions/${versionNumber}/reject`,
-      { method: "POST", token, body: { actor } },
+      { method: "POST", token },
     ),
 
-  approveVersion: (token: string, documentId: string, versionNumber: number, actor: string) =>
+  approveVersion: (token: string, documentId: string, versionNumber: number) =>
     request<import("./types").DocumentVersion>(
       `/api/v1/documents/${documentId}/versions/${versionNumber}/approve`,
-      { method: "POST", token, body: { actor } },
+      { method: "POST", token },
     ),
 
   // --- MOD·WZD (asistente paso a paso) ---

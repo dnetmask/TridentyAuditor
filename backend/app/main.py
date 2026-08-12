@@ -7,6 +7,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.auth.router import router as auth_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.documents.router import router as documents_router
@@ -72,17 +73,13 @@ def swagger_ui() -> HTMLResponse:
     )
 
 
+app.include_router(auth_router)
 app.include_router(frameworks_router)
 app.include_router(domains_router)
 app.include_router(controls_router)
 app.include_router(tenants_router)
 app.include_router(documents_router)
 app.include_router(wizard_router)
-
-if settings.environment == "local":
-    from app.dev.router import router as dev_router
-
-    app.include_router(dev_router)
 
 
 @app.get("/health", tags=["health"])

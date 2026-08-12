@@ -14,6 +14,8 @@ const DOCUMENT_TYPES = [
 export function DocumentsPage() {
   const { session } = useAuth();
   const token = session!.token;
+  const canWrite = session!.role === "tenant_admin" || session!.role === "internal_auditor";
+  const canReview = session!.role === "tenant_admin";
 
   const [documents, setDocuments] = useState<DocumentDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +60,11 @@ export function DocumentsPage() {
             vuelve obsoleta a la anterior.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          + Nuevo documento
-        </button>
+        {canWrite && (
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            + Nuevo documento
+          </button>
+        )}
       </div>
 
       {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
@@ -109,7 +113,8 @@ export function DocumentsPage() {
                           <DocumentDetailPanel
                             doc={doc}
                             token={token}
-                            actor={session!.sub}
+                            canWrite={canWrite}
+                            canReview={canReview}
                             busy={busy}
                             onAction={runAction}
                           />
@@ -127,7 +132,6 @@ export function DocumentsPage() {
       {showCreate && (
         <CreateDocumentModal
           token={token}
-          defaultCreatedBy={session!.sub}
           onClose={() => setShowCreate(false)}
           onCreated={async () => {
             setShowCreate(false);
@@ -146,13 +150,15 @@ function currentVersion(doc: DocumentDetail) {
 function DocumentDetailPanel({
   doc,
   token,
-  actor,
+  canWrite,
+  canReview,
   busy,
   onAction,
 }: {
   doc: DocumentDetail;
   token: string;
-  actor: string;
+  canWrite: boolean;
+  canReview: boolean;
   busy: boolean;
   onAction: (action: () => Promise<unknown>) => Promise<void>;
 }) {
@@ -175,7 +181,7 @@ function DocumentDetailPanel({
             {v.change_summary && <span className="muted">{v.change_summary}</span>}
           </div>
           <div className="version-actions">
-            {v.status === "draft" && (
+            {v.status === "draft" && canWrite && (
               <button
                 className="btn btn-secondary btn-sm"
                 disabled={busy}
@@ -184,19 +190,19 @@ function DocumentDetailPanel({
                 Enviar a revisión
               </button>
             )}
-            {v.status === "in_review" && (
+            {v.status === "in_review" && canReview && (
               <>
                 <button
                   className="btn btn-primary btn-sm"
                   disabled={busy}
-                  onClick={() => onAction(() => api.approveVersion(token, doc.id, v.version_number, actor))}
+                  onClick={() => onAction(() => api.approveVersion(token, doc.id, v.version_number))}
                 >
                   Aprobar
                 </button>
                 <button
                   className="btn btn-danger btn-sm"
                   disabled={busy}
-                  onClick={() => onAction(() => api.rejectVersion(token, doc.id, v.version_number, actor))}
+                  onClick={() => onAction(() => api.rejectVersion(token, doc.id, v.version_number))}
                 >
                   Rechazar
                 </button>
@@ -206,22 +212,23 @@ function DocumentDetailPanel({
         </div>
       ))}
 
-      <div style={{ padding: "0.75rem 1rem" }}>
-        <button
-          className="btn btn-secondary btn-sm"
-          disabled={busy || hasOpenVersion}
-          title={hasOpenVersion ? "Ya hay una versión en borrador o revisión" : undefined}
-          onClick={() => setShowNewVersion(true)}
-        >
-          + Nueva versión
-        </button>
-      </div>
+      {canWrite && (
+        <div style={{ padding: "0.75rem 1rem" }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            disabled={busy || hasOpenVersion}
+            title={hasOpenVersion ? "Ya hay una versión en borrador o revisión" : undefined}
+            onClick={() => setShowNewVersion(true)}
+          >
+            + Nueva versión
+          </button>
+        </div>
+      )}
 
       {showNewVersion && (
         <NewVersionModal
           token={token}
           documentId={doc.id}
-          defaultCreatedBy={actor}
           onClose={() => setShowNewVersion(false)}
           onCreated={async () => {
             setShowNewVersion(false);
@@ -235,12 +242,10 @@ function DocumentDetailPanel({
 
 function CreateDocumentModal({
   token,
-  defaultCreatedBy,
   onClose,
   onCreated,
 }: {
   token: string;
-  defaultCreatedBy: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -249,7 +254,6 @@ function CreateDocumentModal({
   const [documentType, setDocumentType] = useState("policy");
   const [storageRef, setStorageRef] = useState("");
   const [retentionMonths, setRetentionMonths] = useState("");
-  const [createdBy, setCreatedBy] = useState(defaultCreatedBy);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -263,7 +267,6 @@ function CreateDocumentModal({
         title,
         document_type: documentType,
         storage_ref: storageRef,
-        created_by: createdBy,
         retention_months: retentionMonths ? Number(retentionMonths) : null,
       });
       onCreated();
@@ -316,10 +319,6 @@ function CreateDocumentModal({
               onChange={(e) => setRetentionMonths(e.target.value)}
             />
           </div>
-          <div className="field">
-            <label htmlFor="created-by">Creado por</label>
-            <input id="created-by" required value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} />
-          </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
@@ -335,19 +334,16 @@ function CreateDocumentModal({
 function NewVersionModal({
   token,
   documentId,
-  defaultCreatedBy,
   onClose,
   onCreated,
 }: {
   token: string;
   documentId: string;
-  defaultCreatedBy: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const [storageRef, setStorageRef] = useState("");
   const [changeSummary, setChangeSummary] = useState("");
-  const [createdBy, setCreatedBy] = useState(defaultCreatedBy);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -358,7 +354,6 @@ function NewVersionModal({
     try {
       await api.createVersion(token, documentId, {
         storage_ref: storageRef,
-        created_by: createdBy,
         change_summary: changeSummary || null,
       });
       onCreated();
@@ -382,10 +377,6 @@ function NewVersionModal({
           <div className="field">
             <label htmlFor="change-summary">Resumen del cambio</label>
             <textarea id="change-summary" rows={3} value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="v-created-by">Creado por</label>
-            <input id="v-created-by" required value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} />
           </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>

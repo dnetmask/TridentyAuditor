@@ -1,3 +1,5 @@
+# Tras el primer `docker compose up`, crea la cuenta Super Admin con:
+#   docker compose exec api python scripts/create_super_admin.py admin@netmask.co --name "Nombre"
 name: tridentyauditor
 
 services:
@@ -34,7 +36,7 @@ services:
       TRIDENTY_ENVIRONMENT: local
       TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
       TRIDENTY_JWT_SECRET: dev-secret-change-me
-      TRIDENTY_ADMIN_BOOTSTRAP_TOKEN: dev-admin-token-change-me
+      TRIDENTY_CORS_ORIGINS: http://localhost:5173
     ports:
       - "8000:8000"
     depends_on:

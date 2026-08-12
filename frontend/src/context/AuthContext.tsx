@@ -1,10 +1,13 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import type { UserRole } from "../api/types";
 
 export interface Session {
-  tenantId: string;
-  tenantName: string;
-  sub: string;
-  role: string;
+  tenantId: string | null;
+  tenantName: string | null;
+  userId: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
   token: string;
 }
 

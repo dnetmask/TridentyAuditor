@@ -28,7 +28,6 @@ jobs:
     env:
       TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@localhost:5432/tridentyauditor_test
       TRIDENTY_JWT_SECRET: test-secret
-      TRIDENTY_ADMIN_BOOTSTRAP_TOKEN: test-admin-token
     steps:
       - uses: actions/checkout@v4
 
