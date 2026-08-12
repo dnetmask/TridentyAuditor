@@ -73,6 +73,8 @@ export const api = {
     payload: { full_name?: string; role?: import("./types").UserRole; is_active?: boolean; password?: string },
   ) => request<import("./types").User>(`/api/v1/auth/users/${userId}`, { method: "PATCH", token, body: payload }),
 
+  directory: (token: string) => request<import("./types").DirectoryUser[]>("/api/v1/auth/directory", { token }),
+
   // --- motor de frameworks ---
   getFramework: (code: string) =>
     request<import("./types").FrameworkDetail>(`/api/v1/frameworks/${encodeURIComponent(code)}`),
@@ -163,4 +165,77 @@ export const api = {
       method: "POST",
       token,
     }),
+
+  // --- MOD·SOA (declaración de aplicabilidad) ---
+  soaInstantiate: (token: string) =>
+    request<{ created: number }>("/api/v1/soa/instantiate", { method: "POST", token }),
+
+  soaEntries: (token: string) => request<import("./types").SoaEntry[]>("/api/v1/soa/entries", { token }),
+
+  soaSummary: (token: string) => request<import("./types").SoaSummary>("/api/v1/soa/summary", { token }),
+
+  soaUpdateEntry: (
+    token: string,
+    entryId: string,
+    payload: {
+      is_applicable?: boolean;
+      justification?: string | null;
+      implementation_status?: import("./types").ImplementationStatus;
+      owner_user_id?: string | null;
+      evidence_document_id?: string | null;
+      notes?: string | null;
+    },
+  ) =>
+    request<import("./types").SoaEntry>(`/api/v1/soa/entries/${entryId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  // --- MOD·RSK (gestión de riesgos) ---
+  listAssets: (token: string) => request<import("./types").Asset[]>("/api/v1/risk/assets", { token }),
+
+  createAsset: (
+    token: string,
+    payload: { name: string; description?: string | null; category: import("./types").AssetCategory; owner_user_id?: string | null },
+  ) => request<import("./types").Asset>("/api/v1/risk/assets", { method: "POST", token, body: payload }),
+
+  listRisks: (token: string) => request<import("./types").Risk[]>("/api/v1/risk/risks", { token }),
+
+  createRisk: (
+    token: string,
+    payload: {
+      asset_id?: string | null;
+      title: string;
+      description?: string | null;
+      threat?: string | null;
+      vulnerability?: string | null;
+      likelihood: number;
+      impact: number;
+      owner_user_id?: string | null;
+      control_ids?: string[];
+    },
+  ) => request<import("./types").Risk>("/api/v1/risk/risks", { method: "POST", token, body: payload }),
+
+  updateRisk: (
+    token: string,
+    riskId: string,
+    payload: Partial<{
+      asset_id: string | null;
+      title: string;
+      description: string | null;
+      threat: string | null;
+      vulnerability: string | null;
+      likelihood: number;
+      impact: number;
+      treatment_decision: import("./types").TreatmentDecision;
+      treatment_plan: string | null;
+      residual_likelihood: number;
+      residual_impact: number;
+      owner_user_id: string | null;
+      status: import("./types").RiskStatus;
+      evidence_document_id: string | null;
+      control_ids: string[];
+    }>,
+  ) => request<import("./types").Risk>(`/api/v1/risk/risks/${riskId}`, { method: "PATCH", token, body: payload }),
 };

@@ -54,3 +54,11 @@ class UserRead(BaseModel):
     tenant_id: uuid.UUID | None
     is_active: bool
     created_at: datetime
+
+
+class DirectoryUserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    full_name: str
+    role: UserRole

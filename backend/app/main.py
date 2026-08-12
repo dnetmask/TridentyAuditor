@@ -14,6 +14,8 @@ from app.documents.router import router as documents_router
 from app.frameworks.router import controls_router, domains_router
 from app.frameworks.router import router as frameworks_router
 from app.frameworks.seeds.iso27001_2022 import seed_iso27001
+from app.risk.router import router as risk_router
+from app.soa.router import router as soa_router
 from app.tenants.router import router as tenants_router
 from app.wizard.router import router as wizard_router
 from app.wizard.seeds.methodology import seed_wizard_phases
@@ -80,6 +82,8 @@ app.include_router(controls_router)
 app.include_router(tenants_router)
 app.include_router(documents_router)
 app.include_router(wizard_router)
+app.include_router(soa_router)
+app.include_router(risk_router)
 
 
 @app.get("/health", tags=["health"])

@@ -8,7 +8,7 @@ from app.auth import schemas, service
 from app.auth.service import EmailAlreadyExists, Forbidden, InvalidCredentials, InvalidUser, UserNotFound
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthPrincipal, decode_principal, require_admin_principal
+from app.core.security import AuthPrincipal, TenantPrincipal, decode_principal, decode_tenant_token, require_admin_principal
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 settings = get_settings()
@@ -53,6 +53,14 @@ def me(principal: AuthPrincipal = Depends(decode_principal)):
         role=principal.role,
         tenant_id=principal.tenant_id,
     )
+
+
+@router.get("/directory", response_model=list[schemas.DirectoryUserRead])
+def directory(
+    db: Session = Depends(get_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    return service.list_tenant_directory(db, principal.tenant_id)
 
 
 @router.post("/users", response_model=schemas.UserRead, status_code=status.HTTP_201_CREATED)

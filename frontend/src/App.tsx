@@ -7,6 +7,8 @@ import { FrameworksPage } from "./pages/FrameworksPage";
 import { WizardPage } from "./pages/WizardPage";
 import { AdminTenantsPage } from "./pages/AdminTenantsPage";
 import { UsersPage } from "./pages/UsersPage";
+import { SoaPage } from "./pages/SoaPage";
+import { RiskPage } from "./pages/RiskPage";
 import type { UserRole } from "./api/types";
 
 function RoleHome() {
@@ -66,6 +68,22 @@ export default function App() {
               element={
                 <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
                   <FrameworksPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/soa"
+              element={
+                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                  <SoaPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/riesgos"
+              element={
+                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                  <RiskPage />
                 </RequireRole>
               }
             />

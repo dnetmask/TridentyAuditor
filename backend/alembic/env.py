@@ -10,6 +10,8 @@ from app.core.database import Base
 from app.auth import models as auth_models  # noqa: F401
 from app.documents import models as documents_models  # noqa: F401
 from app.frameworks import models as frameworks_models  # noqa: F401
+from app.risk import models as risk_models  # noqa: F401
+from app.soa import models as soa_models  # noqa: F401
 from app.tenants import models as tenants_models  # noqa: F401
 from app.wizard import models as wizard_models  # noqa: F401
 

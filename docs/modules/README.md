@@ -9,8 +9,8 @@ frameworks (dominio, control, riesgo, evidencia, hallazgo) — ver
 | — | Motor de frameworks | 1 | ✅ Implementado | [frameworks-engine.md](frameworks-engine.md) |
 | — | Autenticación y roles | 1 | ✅ Implementado | [auth-roles.md](auth-roles.md) |
 | MOD·DOC | Control documental | 1 | ✅ Implementado | [mod-doc.md](mod-doc.md) |
-| MOD·RSK | Gestión de riesgos | 1 | ⏳ Pendiente | [mod-rsk.md](mod-rsk.md) |
-| MOD·SOA | SoA · Anexo A | 1 | ⏳ Pendiente | [mod-soa.md](mod-soa.md) |
+| MOD·RSK | Gestión de riesgos | 1 | ✅ Implementado | [mod-rsk.md](mod-rsk.md) |
+| MOD·SOA | SoA · Anexo A | 1 | ✅ Implementado | [mod-soa.md](mod-soa.md) |
 | MOD·AUD | Auditoría interna | 1 | ⏳ Pendiente | [mod-aud.md](mod-aud.md) |
 | MOD·WZD | Asistente paso a paso | 1 | ✅ Implementado | [mod-wzd.md](mod-wzd.md) |
 | MOD·KPI | Indicadores y revisión | 1 | ⏳ Pendiente | [mod-kpi.md](mod-kpi.md) |

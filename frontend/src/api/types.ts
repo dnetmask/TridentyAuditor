@@ -122,3 +122,87 @@ export interface User {
   is_active: boolean;
   created_at: string;
 }
+
+export interface DirectoryUser {
+  id: string;
+  full_name: string;
+  role: UserRole;
+}
+
+// --- MOD·SOA ---
+
+export type ImplementationStatus = "not_started" | "in_progress" | "implemented";
+
+export interface DomainSummary {
+  code: string;
+  name: string;
+}
+
+export interface ControlSummary {
+  id: string;
+  code: string;
+  name: string;
+  domain: DomainSummary;
+}
+
+export interface SoaEntry {
+  id: string;
+  control: ControlSummary;
+  is_applicable: boolean;
+  justification: string | null;
+  implementation_status: ImplementationStatus;
+  owner_user_id: string | null;
+  evidence_document_id: string | null;
+  notes: string | null;
+  updated_at: string;
+}
+
+export interface SoaSummary {
+  total: number;
+  applicable: number;
+  excluded: number;
+  implemented: number;
+  in_progress: number;
+  not_started: number;
+}
+
+// --- MOD·RSK ---
+
+export type AssetCategory = "information" | "software" | "hardware" | "service" | "people" | "facility" | "other";
+export type TreatmentDecision = "mitigate" | "accept" | "transfer" | "avoid";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type RiskStatus = "open" | "treating" | "closed";
+
+export interface Asset {
+  id: string;
+  name: string;
+  description: string | null;
+  category: AssetCategory;
+  owner_user_id: string | null;
+  created_at: string;
+}
+
+export interface Risk {
+  id: string;
+  asset_id: string | null;
+  title: string;
+  description: string | null;
+  threat: string | null;
+  vulnerability: string | null;
+  likelihood: number;
+  impact: number;
+  inherent_score: number;
+  inherent_level: RiskLevel;
+  treatment_decision: TreatmentDecision | null;
+  treatment_plan: string | null;
+  residual_likelihood: number | null;
+  residual_impact: number | null;
+  residual_score: number | null;
+  residual_level: RiskLevel | null;
+  owner_user_id: string | null;
+  status: RiskStatus;
+  evidence_document_id: string | null;
+  control_ids: string[];
+  created_at: string;
+  updated_at: string;
+}

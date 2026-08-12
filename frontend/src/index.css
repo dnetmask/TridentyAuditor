@@ -19,6 +19,15 @@
   --status-obsolete-bg: #f1f1f1;
   --status-obsolete-fg: #8a8f8a;
 
+  --risk-low-bg: #e1f5e5;
+  --risk-low-fg: #1e6b34;
+  --risk-medium-bg: #fff3d6;
+  --risk-medium-fg: #8a5a00;
+  --risk-high-bg: #fde2d0;
+  --risk-high-fg: #a3480a;
+  --risk-critical-bg: #fbe0de;
+  --risk-critical-fg: #9c1c14;
+
   --radius: 10px;
   --shadow-sm: 0 1px 2px rgba(20, 30, 25, 0.06);
   --shadow-md: 0 4px 16px rgba(20, 30, 25, 0.08);
@@ -674,5 +683,52 @@ form.stacked {
 
 .task-fields .evidence-select {
   width: 15rem;
+}
+
+.badge-risk-low { background: var(--risk-low-bg); color: var(--risk-low-fg); }
+.badge-risk-medium { background: var(--risk-medium-bg); color: var(--risk-medium-fg); }
+.badge-risk-high { background: var(--risk-high-bg); color: var(--risk-high-fg); }
+.badge-risk-critical { background: var(--risk-critical-bg); color: var(--risk-critical-fg); }
+
+.risk-detail-panel {
+  background: #fafbfa;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.risk-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.control-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.control-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.control-chip button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0;
 }
 

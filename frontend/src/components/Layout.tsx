@@ -35,6 +35,12 @@ export function Layout() {
                 <NavLink to="/ruta-sgsi" className={({ isActive }) => (isActive ? "active" : "")}>
                   Ruta SGSI
                 </NavLink>
+                <NavLink to="/riesgos" className={({ isActive }) => (isActive ? "active" : "")}>
+                  Riesgos
+                </NavLink>
+                <NavLink to="/soa" className={({ isActive }) => (isActive ? "active" : "")}>
+                  SoA
+                </NavLink>
                 <NavLink to="/documentos" className={({ isActive }) => (isActive ? "active" : "")}>
                   Documentos
                 </NavLink>

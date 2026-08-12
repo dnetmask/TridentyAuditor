@@ -21,13 +21,13 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
 | Control documental | MOD·DOC | ✅ Funcional (CRUD + versionado + aprobación) |
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (8 fases, evidencia obligatoria, desbloqueo por fase) |
-| Gestión de riesgos | MOD·RSK | ⏳ Fase 1, pendiente |
-| SoA · Anexo A | MOD·SOA | ⏳ Fase 1, pendiente |
+| Gestión de riesgos | MOD·RSK | ✅ Funcional (activos, matriz probabilidad×impacto, tratamiento, residual) |
+| SoA · Anexo A | MOD·SOA | ✅ Funcional (93 controles, exclusión con justificación, dueño) |
 | Auditoría interna | MOD·AUD | ⏳ Fase 1, pendiente |
 | Indicadores y revisión | MOD·KPI | ⏳ Fase 1, pendiente |
 | Capacitación y cultura | MOD·TRN | ⏳ Fase 1, pendiente |
 | Módulo NIST CSF 2.0 | MOD·NIST | ⏳ Fase 2 |
-| Frontend (React) | — | ✅ Ruta SGSI, Documentos, Marco normativo |
+| Frontend (React) | — | ✅ Ruta SGSI, Documentos, Marco normativo, SoA, Riesgos |
 
 Ver [`docs/modules/`](docs/modules) para el detalle de cada módulo.
 

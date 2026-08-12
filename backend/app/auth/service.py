@@ -103,6 +103,20 @@ def list_users(db: Session, *, viewer_role: str, viewer_tenant_id: str | None) -
     return list(db.scalars(stmt))
 
 
+def list_tenant_directory(db: Session, tenant_id: str) -> list[User]:
+    """Nombres del propio tenant para selectores de dueño (SoA, riesgos) —
+
+    a diferencia de ``list_users``, cualquier rol del tenant puede leerlo,
+    no solo Admin del tenant / Super Admin.
+    """
+    stmt = (
+        select(User)
+        .where(User.tenant_id == tenant_id, User.is_active.is_(True))
+        .order_by(User.full_name)
+    )
+    return list(db.scalars(stmt))
+
+
 def _get_manageable_user(db: Session, user_id: uuid.UUID, *, viewer_role: str, viewer_tenant_id: str | None) -> User:
     user = db.get(User, user_id)
     if user is None:
