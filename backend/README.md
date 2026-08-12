@@ -12,7 +12,9 @@ cd ../deploy
 docker compose up --build
 ```
 
-API en `http://localhost:8000`, docs interactivas en `http://localhost:8000/docs`.
+API en `http://localhost:8001`, docs interactivas en `http://localhost:8001/docs`
+(el puerto host es 8001, no 8000, para no chocar con otro proceso que ya lo use
+en la máquina — dentro del contenedor uvicorn sigue escuchando en el 8000).
 El Swagger UI se sirve desde assets locales (`app/static/swagger-ui`, vendorizados
 de `swagger-ui-dist`), no desde un CDN — funciona sin salida a internet, algo
 relevante para el tier aislado on-prem/air-gapped de la sección 04.

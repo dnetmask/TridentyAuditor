@@ -12,7 +12,7 @@ Con el backend ya corriendo (ver `../backend/README.md` o `../deploy`):
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local   # ajustar VITE_API_BASE_URL si el backend no está en :8000
+cp .env.example .env.local   # backend sin contenedores -> :8000 (default); con docker compose -> :8001
 npm run dev
 ```
 

@@ -49,15 +49,18 @@ cd deploy
 docker compose up --build
 ```
 
-Esto levanta Postgres y la API en `http://localhost:8000` (docs interactivas en
-`/docs`). Ver [`backend/README.md`](backend/README.md) para correr el backend
-sin contenedores y ejecutar las pruebas.
+Esto levanta Postgres y la API en `http://localhost:8001` (docs interactivas en
+`/docs`) — el puerto host se movió de 8000 a 8001 porque 8000 es un puerto
+común y suele chocar con otro proceso/contenedor ya corriendo en la máquina.
+Ver [`backend/README.md`](backend/README.md) para correr el backend sin
+contenedores y ejecutar las pruebas.
 
 El frontend no está en el `docker-compose.yml` todavía — se corre aparte:
 
 ```bash
 cd frontend
 npm install
+echo "VITE_API_BASE_URL=http://localhost:8001" > .env.local   # si el backend corre con docker compose
 npm run dev
 ```
 
