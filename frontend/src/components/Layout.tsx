@@ -11,7 +11,8 @@ export function Layout() {
       <header className="topbar">
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
           <NavLink to="/ruta-sgsi" className="topbar-brand">
-            TridentyAuditor <small>GRC</small>
+            <img src="/logo.svg" alt="TridentyAuditor" className="topbar-logo" />
+            <small>GRC</small>
           </NavLink>
           <nav className="topbar-nav">
             <NavLink to="/ruta-sgsi" className={({ isActive }) => (isActive ? "active" : "")}>

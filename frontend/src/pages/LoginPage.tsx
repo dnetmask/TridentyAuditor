@@ -54,7 +54,7 @@ export function LoginPage() {
   return (
     <div className="login-shell">
       <div className="login-card">
-        <h1>TridentyAuditor</h1>
+        <img src="/logo.svg" alt="TridentyAuditor" className="login-logo" />
         <p className="subtitle">Plataforma GRC multitenant — acceso de desarrollo</p>
 
         {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
