@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     # Keycloak is wired up. Temporary — see docs/modules/README.md.
     admin_bootstrap_token: str = "dev-admin-token-change-me"
 
+    # Origins allowed to call the API from a browser (the Vite dev server by
+    # default). Comma-separated.
+    cors_origins: str = "http://localhost:5173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:
