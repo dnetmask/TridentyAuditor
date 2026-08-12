@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ComplianceProvider } from "./context/ComplianceContext";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
@@ -27,71 +28,73 @@ function RequireRole({ roles, children }: { roles: UserRole[]; children: React.R
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/entrar" element={<LoginPage />} />
-          <Route element={<Layout />}>
-            <Route
-              path="/admin/tenants"
-              element={
-                <RequireRole roles={["super_admin"]}>
-                  <AdminTenantsPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/usuarios"
-              element={
-                <RequireRole roles={["tenant_admin"]}>
-                  <UsersPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/ruta-sgsi"
-              element={
-                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
-                  <WizardPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/documentos"
-              element={
-                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
-                  <DocumentsPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/marco-normativo"
-              element={
-                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
-                  <FrameworksPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/soa"
-              element={
-                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
-                  <SoaPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/riesgos"
-              element={
-                <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
-                  <RiskPage />
-                </RequireRole>
-              }
-            />
-          </Route>
-          <Route path="/" element={<RoleHome />} />
-          <Route path="*" element={<RoleHome />} />
-        </Routes>
-      </BrowserRouter>
+      <ComplianceProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/entrar" element={<LoginPage />} />
+            <Route element={<Layout />}>
+              <Route
+                path="/admin/tenants"
+                element={
+                  <RequireRole roles={["super_admin"]}>
+                    <AdminTenantsPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/usuarios"
+                element={
+                  <RequireRole roles={["tenant_admin"]}>
+                    <UsersPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/ruta-sgsi"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <WizardPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/documentos"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <DocumentsPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/marco-normativo"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <FrameworksPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/soa"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <SoaPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/riesgos"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <RiskPage />
+                  </RequireRole>
+                }
+              />
+            </Route>
+            <Route path="/" element={<RoleHome />} />
+            <Route path="*" element={<RoleHome />} />
+          </Routes>
+        </BrowserRouter>
+      </ComplianceProvider>
     </AuthProvider>
   );
 }

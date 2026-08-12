@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import type { DirectoryUser, ImplementationStatus, SoaEntry, SoaSummary } from "../api/types";
+import { useCompliance } from "../context/ComplianceContext";
+import type { DirectoryUser, DocumentDetail, ImplementationStatus, SoaEntry, SoaSummary } from "../api/types";
 
 const STATUS_LABEL: Record<ImplementationStatus, string> = {
   not_started: "Sin iniciar",
@@ -11,6 +12,7 @@ const STATUS_LABEL: Record<ImplementationStatus, string> = {
 
 export function SoaPage() {
   const { session } = useAuth();
+  const { refresh: refreshCompliance } = useCompliance();
   const token = session!.token;
   const canWrite = session!.role === "tenant_admin" || session!.role === "internal_auditor";
   const canInstantiate = session!.role === "tenant_admin";
@@ -18,6 +20,7 @@ export function SoaPage() {
   const [entries, setEntries] = useState<SoaEntry[] | null>(null);
   const [summary, setSummary] = useState<SoaSummary | null>(null);
   const [directory, setDirectory] = useState<DirectoryUser[]>([]);
+  const [documents, setDocuments] = useState<DocumentDetail[]>([]);
   const [openDomain, setOpenDomain] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,8 +34,14 @@ export function SoaPage() {
   useEffect(() => {
     reload();
     api.directory(token).then(setDirectory).catch(() => {});
+    api.listDocuments(token).then(setDocuments).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const approvedDocuments = useMemo(
+    () => documents.filter((d) => d.versions.some((v) => v.status === "approved")),
+    [documents],
+  );
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -40,6 +49,7 @@ export function SoaPage() {
     try {
       await action();
       await reload();
+      refreshCompliance();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "La operación falló");
     } finally {
@@ -115,6 +125,7 @@ export function SoaPage() {
                     key={entry.id}
                     entry={entry}
                     directory={directory}
+                    approvedDocuments={approvedDocuments}
                     canWrite={canWrite}
                     busy={busy}
                     onUpdate={(payload) => run(() => api.soaUpdateEntry(token, entry.id, payload))}
@@ -141,12 +152,14 @@ function SummaryStat({ label, value }: { label: string; value: number }) {
 function SoaRow({
   entry,
   directory,
+  approvedDocuments,
   canWrite,
   busy,
   onUpdate,
 }: {
   entry: SoaEntry;
   directory: DirectoryUser[];
+  approvedDocuments: DocumentDetail[];
   canWrite: boolean;
   busy: boolean;
   onUpdate: (payload: {
@@ -154,6 +167,7 @@ function SoaRow({
     justification?: string | null;
     implementation_status?: ImplementationStatus;
     owner_user_id?: string | null;
+    evidence_document_id?: string | null;
   }) => void;
 }) {
   const [justification, setJustification] = useState(entry.justification ?? "");
@@ -221,6 +235,22 @@ function SoaRow({
       {entry.control.evidence_guidance && (
         <div className="evidence-hint" style={{ paddingLeft: "5.5rem" }}>
           <strong>Evidencia sugerida:</strong> {entry.control.evidence_guidance}
+        </div>
+      )}
+      {!pendingExclude && (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", paddingLeft: "5.5rem" }}>
+          <label style={{ fontSize: "0.8rem" }} htmlFor={`evidence-${entry.id}`}>Evidencia:</label>
+          <select
+            id={`evidence-${entry.id}`}
+            value={entry.evidence_document_id ?? ""}
+            disabled={disabled}
+            onChange={(e) => onUpdate({ evidence_document_id: e.target.value || null })}
+          >
+            <option value="">— sin evidencia vinculada —</option>
+            {approvedDocuments.map((d) => (
+              <option key={d.id} value={d.id}>{d.code} · {d.title}</option>
+            ))}
+          </select>
         </div>
       )}
       {pendingExclude && (

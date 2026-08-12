@@ -23,6 +23,28 @@ class InvalidTransition(DocumentError):
     pass
 
 
+def has_approved_version(db: Session, tenant_id: str, document_id: uuid.UUID) -> bool:
+    stmt = select(DocumentVersion.id).where(
+        DocumentVersion.tenant_id == tenant_id,
+        DocumentVersion.document_id == document_id,
+        DocumentVersion.status == DocumentStatus.APPROVED,
+    )
+    return db.scalars(stmt).first() is not None
+
+
+def approved_document_ids(db: Session, tenant_id: str) -> set[uuid.UUID]:
+    """IDs de todos los documentos del tenant con al menos una versión aprobada.
+
+    Pensado para chequear "¿esta evidencia es real?" contra muchos registros
+    a la vez (ej. las 93 entradas del SoA) sin una consulta por registro.
+    """
+    stmt = select(DocumentVersion.document_id).where(
+        DocumentVersion.tenant_id == tenant_id,
+        DocumentVersion.status == DocumentStatus.APPROVED,
+    ).distinct()
+    return set(db.scalars(stmt))
+
+
 def _get_document(db: Session, tenant_id: str, document_id: uuid.UUID) -> Document:
     stmt = (
         select(Document)

@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.auth.router import router as auth_router
+from app.compliance.router import router as compliance_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.documents.router import router as documents_router
@@ -84,6 +85,7 @@ app.include_router(documents_router)
 app.include_router(wizard_router)
 app.include_router(soa_router)
 app.include_router(risk_router)
+app.include_router(compliance_router)
 
 
 @app.get("/health", tags=["health"])

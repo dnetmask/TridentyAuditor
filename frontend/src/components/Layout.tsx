@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { ComplianceMeter } from "./ComplianceMeter";
 import type { UserRole } from "../api/types";
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -55,6 +56,7 @@ export function Layout() {
               </>
             )}
           </nav>
+          {!isSuperAdmin && <ComplianceMeter />}
         </div>
         <div className="topbar-session">
           {session.tenantName && <span className="tier-chip">{session.tenantName}</span>}

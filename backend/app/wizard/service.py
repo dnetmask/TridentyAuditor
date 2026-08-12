@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.documents.models import Document, DocumentStatus, DocumentVersion
+from app.documents.service import has_approved_version
 from app.wizard.models import TenantWizardTask, WizardPhase, WizardTaskStatus, WizardTaskTemplate
 
 
@@ -191,20 +191,6 @@ def update_task(
     return task
 
 
-def _has_approved_version(db: Session, tenant_id: str, document_id: uuid.UUID) -> bool:
-    stmt = (
-        select(DocumentVersion)
-        .join(Document)
-        .where(
-            Document.id == document_id,
-            Document.tenant_id == tenant_id,
-            DocumentVersion.tenant_id == tenant_id,
-            DocumentVersion.status == DocumentStatus.APPROVED,
-        )
-    )
-    return db.scalars(stmt).first() is not None
-
-
 def complete_task(db: Session, tenant_id: str, task_id: uuid.UUID) -> TenantWizardTask:
     task = _get_task(db, tenant_id, task_id)
     if task.status == WizardTaskStatus.DONE:
@@ -214,7 +200,7 @@ def complete_task(db: Session, tenant_id: str, task_id: uuid.UUID) -> TenantWiza
         raise InvalidTransition("La fase anterior todavía no está completa")
 
     if task.requires_evidence:
-        if task.evidence_document_id is None or not _has_approved_version(
+        if task.evidence_document_id is None or not has_approved_version(
             db, tenant_id, task.evidence_document_id
         ):
             raise InvalidTransition(

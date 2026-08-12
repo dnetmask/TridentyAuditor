@@ -23,6 +23,7 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (8 fases, evidencia obligatoria, desbloqueo por fase) |
 | Gestión de riesgos | MOD·RSK | ✅ Funcional (activos, matriz probabilidad×impacto, tratamiento, residual) |
 | SoA · Anexo A | MOD·SOA | ✅ Funcional (93 controles, exclusión con justificación, dueño) |
+| Indicador de cumplimiento | — | ✅ % de evidencia aprobada (SoA + asistente), visible en la barra superior |
 | Auditoría interna | MOD·AUD | ⏳ Fase 1, pendiente |
 | Indicadores y revisión | MOD·KPI | ⏳ Fase 1, pendiente |
 | Capacitación y cultura | MOD·TRN | ⏳ Fase 1, pendiente |

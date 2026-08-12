@@ -75,6 +75,9 @@ export const api = {
 
   directory: (token: string) => request<import("./types").DirectoryUser[]>("/api/v1/auth/directory", { token }),
 
+  complianceOverview: (token: string) =>
+    request<import("./types").ComplianceOverview>("/api/v1/compliance/overview", { token }),
+
   // --- motor de frameworks ---
   getFramework: (code: string) =>
     request<import("./types").FrameworkDetail>(`/api/v1/frameworks/${encodeURIComponent(code)}`),

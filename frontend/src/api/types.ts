@@ -130,6 +130,21 @@ export interface DirectoryUser {
   role: UserRole;
 }
 
+// --- Cumplimiento (indicador en la barra superior) ---
+
+export interface ComplianceComponent {
+  key: string;
+  label: string;
+  evidenced: number;
+  total: number;
+  percentage: number;
+}
+
+export interface ComplianceOverview {
+  percentage: number;
+  components: ComplianceComponent[];
+}
+
 // --- MOD·SOA ---
 
 export type ImplementationStatus = "not_started" | "in_progress" | "implemented";

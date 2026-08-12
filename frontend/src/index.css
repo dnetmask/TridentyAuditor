@@ -139,6 +139,38 @@ a {
   font-weight: 600;
 }
 
+.compliance-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: default;
+}
+
+.compliance-meter-bar {
+  width: 90px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.compliance-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  background: currentColor;
+}
+
+.compliance-meter-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.compliance-meter.compliance-low { color: var(--color-danger); }
+.compliance-meter.compliance-mid { color: var(--risk-medium-fg); }
+.compliance-meter.compliance-high { color: var(--color-primary); }
+
 main.content {
   flex: 1;
   width: 100%;

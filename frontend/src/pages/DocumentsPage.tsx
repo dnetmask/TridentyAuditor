@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useCompliance } from "../context/ComplianceContext";
 import { StatusBadge } from "../components/StatusBadge";
 import type { DocumentDetail } from "../api/types";
 
@@ -20,6 +21,7 @@ const DOCUMENT_TYPE_HINT: Record<string, string> = {
 
 export function DocumentsPage() {
   const { session } = useAuth();
+  const { refresh: refreshCompliance } = useCompliance();
   const token = session!.token;
   const canWrite = session!.role === "tenant_admin" || session!.role === "internal_auditor";
   const canReview = session!.role === "tenant_admin";
@@ -49,6 +51,7 @@ export function DocumentsPage() {
     try {
       await action();
       await reload();
+      refreshCompliance();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "La operación falló");
     } finally {

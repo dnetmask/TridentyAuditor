@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useCompliance } from "../context/ComplianceContext";
 import type { DocumentDetail, PhaseProgress, WizardTask } from "../api/types";
 
 const PHASE_STATUS_LABEL: Record<string, string> = {
@@ -11,6 +12,7 @@ const PHASE_STATUS_LABEL: Record<string, string> = {
 
 export function WizardPage() {
   const { session } = useAuth();
+  const { refresh: refreshCompliance } = useCompliance();
   const token = session!.token;
   const canInstantiate = session!.role === "tenant_admin";
   const canWrite = session!.role === "tenant_admin" || session!.role === "internal_auditor";
@@ -43,6 +45,7 @@ export function WizardPage() {
       await action();
       await reload();
       api.listDocuments(token).then(setDocuments).catch(() => {});
+      refreshCompliance();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "La operación falló");
     } finally {
