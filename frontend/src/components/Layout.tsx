@@ -10,10 +10,13 @@ export function Layout() {
     <div className="app-shell">
       <header className="topbar">
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          <NavLink to="/documentos" className="topbar-brand">
+          <NavLink to="/ruta-sgsi" className="topbar-brand">
             TridentyAuditor <small>GRC</small>
           </NavLink>
           <nav className="topbar-nav">
+            <NavLink to="/ruta-sgsi" className={({ isActive }) => (isActive ? "active" : "")}>
+              Ruta SGSI
+            </NavLink>
             <NavLink to="/documentos" className={({ isActive }) => (isActive ? "active" : "")}>
               Documentos
             </NavLink>

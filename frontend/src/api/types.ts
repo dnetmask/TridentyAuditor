@@ -65,3 +65,38 @@ export interface FrameworkDetail {
   version: string;
   domains: Domain[];
 }
+
+export interface WizardPhase {
+  id: string;
+  number: number;
+  code: string;
+  name: string;
+  objective: string;
+}
+
+export type WizardTaskStatus = "pending" | "done";
+
+export interface WizardTask {
+  id: string;
+  phase_id: string;
+  template_id: string | null;
+  title: string;
+  description: string | null;
+  requires_evidence: boolean;
+  owner: string | null;
+  due_date: string | null;
+  status: WizardTaskStatus;
+  evidence_document_id: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export type PhaseStatus = "locked" | "current" | "complete";
+
+export interface PhaseProgress {
+  phase: WizardPhase;
+  status: PhaseStatus;
+  tasks: WizardTask[];
+  done_count: number;
+  total_count: number;
+}

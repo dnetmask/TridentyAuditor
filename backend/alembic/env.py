@@ -10,6 +10,7 @@ from app.core.database import Base
 from app.documents import models as documents_models  # noqa: F401
 from app.frameworks import models as frameworks_models  # noqa: F401
 from app.tenants import models as tenants_models  # noqa: F401
+from app.wizard import models as wizard_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

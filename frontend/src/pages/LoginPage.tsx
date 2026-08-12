@@ -28,7 +28,7 @@ export function LoginPage() {
       const tenant = await api.createTenant(adminToken, tenantName, tenantSlug);
       const { access_token } = await api.mintDevToken(tenant.id, sub, role);
       login({ tenantId: tenant.id, tenantName: tenant.name, sub, role, token: access_token });
-      navigate("/documentos");
+      navigate("/ruta-sgsi");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo crear el tenant");
     } finally {
@@ -43,7 +43,7 @@ export function LoginPage() {
     try {
       const { access_token } = await api.mintDevToken(existingTenantId, sub, role);
       login({ tenantId: existingTenantId, tenantName: existingTenantId.slice(0, 8), sub, role, token: access_token });
-      navigate("/documentos");
+      navigate("/ruta-sgsi");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo generar el token");
     } finally {

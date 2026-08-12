@@ -14,6 +14,8 @@ from app.frameworks.router import controls_router, domains_router
 from app.frameworks.router import router as frameworks_router
 from app.frameworks.seeds.iso27001_2022 import seed_iso27001
 from app.tenants.router import router as tenants_router
+from app.wizard.router import router as wizard_router
+from app.wizard.seeds.methodology import seed_wizard_phases
 
 STATIC_DIR = Path(__file__).parent / "static"
 settings = get_settings()
@@ -24,6 +26,7 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_iso27001(db)
+        seed_wizard_phases(db)
     finally:
         db.close()
     yield
@@ -74,6 +77,7 @@ app.include_router(domains_router)
 app.include_router(controls_router)
 app.include_router(tenants_router)
 app.include_router(documents_router)
+app.include_router(wizard_router)
 
 if settings.environment == "local":
     from app.dev.router import router as dev_router

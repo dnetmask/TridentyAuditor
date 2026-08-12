@@ -9,7 +9,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH";
   body?: unknown;
   token?: string | null;
   adminToken?: string | null;
@@ -105,4 +105,46 @@ export const api = {
       `/api/v1/documents/${documentId}/versions/${versionNumber}/approve`,
       { method: "POST", token, body: { actor } },
     ),
+
+  // --- MOD·WZD (asistente paso a paso) ---
+  wizardInstantiate: (token: string) =>
+    request<{ created: number }>("/api/v1/wizard/instantiate", { method: "POST", token }),
+
+  wizardProgress: (token: string) =>
+    request<import("./types").PhaseProgress[]>("/api/v1/wizard/progress", { token }),
+
+  wizardCreateTask: (
+    token: string,
+    payload: {
+      phase_id: string;
+      title: string;
+      description?: string | null;
+      requires_evidence: boolean;
+      owner?: string | null;
+      due_date?: string | null;
+    },
+  ) => request<import("./types").WizardTask>("/api/v1/wizard/tasks", { method: "POST", token, body: payload }),
+
+  wizardUpdateTask: (
+    token: string,
+    taskId: string,
+    payload: { owner?: string | null; due_date?: string | null; evidence_document_id?: string | null },
+  ) =>
+    request<import("./types").WizardTask>(`/api/v1/wizard/tasks/${taskId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  wizardCompleteTask: (token: string, taskId: string) =>
+    request<import("./types").WizardTask>(`/api/v1/wizard/tasks/${taskId}/complete`, {
+      method: "POST",
+      token,
+    }),
+
+  wizardReopenTask: (token: string, taskId: string) =>
+    request<import("./types").WizardTask>(`/api/v1/wizard/tasks/${taskId}/reopen`, {
+      method: "POST",
+      token,
+    }),
 };
