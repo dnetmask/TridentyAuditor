@@ -184,6 +184,11 @@ function TaskRow({
           <strong className={done ? "done" : ""}>{task.title}</strong>
           {task.requires_evidence && <span className="evidence-required">Evidencia requerida</span>}
         </div>
+        {task.description && (
+          <div className="evidence-hint" style={{ marginBottom: "0.4rem" }}>
+            <strong>Evidencia sugerida:</strong> {task.description}
+          </div>
+        )}
         <div className="task-fields">
           <input
             className="owner-input"

@@ -218,6 +218,11 @@ function SoaRow({
           ))}
         </select>
       </div>
+      {entry.control.evidence_guidance && (
+        <div className="evidence-hint" style={{ paddingLeft: "5.5rem" }}>
+          <strong>Evidencia sugerida:</strong> {entry.control.evidence_guidance}
+        </div>
+      )}
       {pendingExclude && (
         <div style={{ paddingLeft: "5.5rem" }}>
           <input

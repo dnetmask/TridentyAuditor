@@ -60,9 +60,20 @@ function DomainAccordion({ domain, open, onToggle }: { domain: Domain; open: boo
       {open && (
         <div className="control-list">
           {domain.controls.map((control) => (
-            <div className="control-item" key={control.id}>
-              <span className="control-code">{control.code}</span>
-              <span>{control.name}</span>
+            <div
+              className="control-item"
+              key={control.id}
+              style={{ flexDirection: "column", alignItems: "stretch", gap: "0.3rem" }}
+            >
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <span className="control-code">{control.code}</span>
+                <span>{control.name}</span>
+              </div>
+              {control.evidence_guidance && (
+                <div className="evidence-hint" style={{ paddingLeft: "5.5rem" }}>
+                  <strong>Evidencia sugerida:</strong> {control.evidence_guidance}
+                </div>
+              )}
             </div>
           ))}
         </div>

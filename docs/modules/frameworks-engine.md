@@ -15,7 +15,15 @@ aplicabilidad por tenant es responsabilidad de MOD·SOA (pendiente).
 contenido licenciado del estándar y no se reproduce aquí; la tabla
 `requirements` queda disponible para cuando se cargue ese texto o para NIST
 CSF 2.0 en la Fase 2. El seed corre en cada arranque de la API (`lifespan` en
-`app/main.py`) y es idempotente.
+`app/main.py`) y es idempotente — también actualiza (no solo inserta) para
+que ampliar el seed se refleje en despliegues ya sembrados.
+
+Cada control también trae `evidence_guidance`: una guía práctica redactada
+por el equipo (no texto del estándar) de qué documento/artefacto suele
+demostrarlo — ej. para A.5.1 "Política de seguridad... aprobada por la
+dirección y evidencia de su publicación". Se muestra en Marco normativo y en
+MOD·SOA junto a cada control, como punto de partida para armar la carpeta de
+evidencia — no reemplaza el criterio del auditor.
 
 ## Endpoints
 

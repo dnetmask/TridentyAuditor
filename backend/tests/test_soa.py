@@ -17,6 +17,8 @@ def test_instantiate_creates_93_entries_and_is_idempotent(client, make_tenant, a
     # domain/control come through nested and ordered
     assert entries[0]["control"]["domain"]["code"] == "A.5"
     assert entries[0]["control"]["code"] == "A.5.1"
+    # every control carries evidence guidance to help the tenant know what to upload
+    assert all(e["control"]["evidence_guidance"] for e in entries)
 
 
 def test_excluding_control_requires_justification(client, make_tenant, auth_headers):

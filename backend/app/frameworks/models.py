@@ -55,6 +55,11 @@ class Control(Base):
     code: Mapped[str] = mapped_column(String(20), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Guía práctica de qué evidencia suele demostrar este control (redactada
+    # por el equipo, no texto normativo licenciado del estándar — ver nota en
+    # app/frameworks/seeds/iso27001_2022.py). Sirve de ejemplo, no reemplaza
+    # el criterio del auditor.
+    evidence_guidance: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     domain: Mapped["Domain"] = relationship(back_populates="controls")

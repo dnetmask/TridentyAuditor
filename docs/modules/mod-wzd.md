@@ -34,6 +34,10 @@ por fase — ver sección 02 del documento de arquitectura.
   no se infiere de `created_at`: todas las tareas de una instanciación caen
   en la misma transacción, y `now()` en Postgres devuelve el inicio de la
   transacción — ordenar por `created_at` habría sido no determinista.
+- `description` en cada tarea (plantilla y ya instanciada) es una guía de
+  qué evidencia suele demostrar que la tarea está resuelta (ej. "Informe de
+  diagnóstico... con las brechas identificadas"), no una explicación de qué
+  es la tarea. Se muestra bajo el título en la pantalla del asistente.
 
 ## Endpoints
 

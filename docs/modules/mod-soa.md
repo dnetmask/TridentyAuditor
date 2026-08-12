@@ -35,6 +35,10 @@ controles en sí son datos globales, no por tenant — ver
 - El resumen (`GET /api/v1/soa/summary`) cuenta aplicables/excluidos y el
   desglose de `implementation_status` — es la fuente de los números que
   también alimentan la vista de progreso.
+- Cada entrada trae `control.evidence_guidance` (ver
+  [frameworks-engine.md](frameworks-engine.md)) y la UI la muestra bajo cada
+  control como guía de qué evidencia suele demostrarlo — es el punto donde
+  más se necesita, justo al decidir el estado de implementación.
 
 ## Endpoints
 

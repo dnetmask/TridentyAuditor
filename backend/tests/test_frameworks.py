@@ -25,6 +25,13 @@ def test_control_detail_includes_empty_requirements(client):
     assert resp.json()["requirements"] == []
 
 
+def test_controls_carry_evidence_guidance(client):
+    resp = client.get("/api/v1/frameworks/ISO27001:2022/domains")
+    for domain in resp.json():
+        for control in domain["controls"]:
+            assert control["evidence_guidance"], f"{control['code']} sin guía de evidencia"
+
+
 def test_unknown_framework_returns_404(client):
     resp = client.get("/api/v1/frameworks/NOPE")
     assert resp.status_code == 404

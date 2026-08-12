@@ -47,6 +47,7 @@ export interface Control {
   code: string;
   name: string;
   description: string | null;
+  evidence_guidance: string | null;
   order_index: number;
   requirements: Requirement[];
 }
@@ -142,6 +143,7 @@ export interface ControlSummary {
   id: string;
   code: string;
   name: string;
+  evidence_guidance: string | null;
   domain: DomainSummary;
 }
 

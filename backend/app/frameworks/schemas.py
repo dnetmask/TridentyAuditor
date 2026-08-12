@@ -19,6 +19,7 @@ class ControlRead(BaseModel):
     code: str
     name: str
     description: str | None
+    evidence_guidance: str | None
     order_index: int
 
 

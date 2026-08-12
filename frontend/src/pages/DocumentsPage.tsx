@@ -11,6 +11,13 @@ const DOCUMENT_TYPES = [
   { value: "other", label: "Otro" },
 ];
 
+const DOCUMENT_TYPE_HINT: Record<string, string> = {
+  policy: "Documento aprobado por la dirección que fija intenciones y reglas generales (ej. Política de Seguridad de la Información).",
+  procedure: "Pasos operativos detallados para ejecutar una actividad de forma consistente (ej. gestión de cambios, copias de respaldo).",
+  record: "Evidencia de que algo ocurrió: logs, actas, capturas de pantalla, formularios firmados, reportes de una herramienta.",
+  other: "Cualquier otro documento de soporte del SGSI (diagramas, contratos, certificados).",
+};
+
 export function DocumentsPage() {
   const { session } = useAuth();
   const token = session!.token;
@@ -298,6 +305,9 @@ function CreateDocumentModal({
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
+            {DOCUMENT_TYPE_HINT[documentType] && (
+              <div className="evidence-hint" style={{ marginTop: "0.3rem" }}>{DOCUMENT_TYPE_HINT[documentType]}</div>
+            )}
           </div>
           <div className="field">
             <label htmlFor="storage-ref">Referencia de almacenamiento</label>

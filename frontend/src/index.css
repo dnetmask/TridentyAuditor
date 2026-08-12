@@ -493,6 +493,17 @@ form.stacked {
   width: 4.5rem;
 }
 
+.evidence-hint {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.evidence-hint strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .wizard-layout {
   display: flex;
   gap: 1.5rem;

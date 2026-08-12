@@ -19,6 +19,7 @@ class ControlSummary(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    evidence_guidance: str | None
     domain: DomainSummary
 
 

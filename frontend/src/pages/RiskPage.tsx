@@ -364,6 +364,12 @@ function RiskDetailPanel({
           onChange={(e) => setTreatmentPlan(e.target.value)}
           onBlur={() => treatmentPlan !== (risk.treatment_plan ?? "") && onUpdate({ treatment_plan: treatmentPlan })}
         />
+        <div className="evidence-hint" style={{ marginTop: "0.3rem" }}>
+          <strong>Evidencia sugerida:</strong> algo que demuestre que el tratamiento se aplicó de
+          verdad — captura de una configuración, contrato o SLA firmado, informe de una prueba,
+          ticket de cambio cerrado. Si el tratamiento trata un control del Anexo A, revisa también
+          la guía de evidencia de ese control en SoA o Marco normativo.
+        </div>
       </div>
 
       <div className="field">
