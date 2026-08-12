@@ -1,0 +1,47 @@
+# Mismo chart, cualquier clúster (AKS/EKS/GKE/OpenShift/k3s) — sección 05.
+# Los valores por defecto apuntan al tier pooled (sección 04); el tier
+# aislado (Postgres/secretos dedicados por tenant) llega en Fase 2.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/dnetmask/tridentyauditor-backend
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: false
+  className: nginx
+  host: tridentyauditor.example.com
+  tls:
+    enabled: false
+    secretName: tridentyauditor-tls
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  environment: production
+
+# Referencia a un Secret ya existente en el clúster (Vault/External Secrets
+# Operator en producción — sección 05/06) con las claves:
+# database-url, jwt-secret, admin-bootstrap-token
+existingSecret: tridentyauditor-backend-secrets
+
+migrationJob:
+  enabled: true
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

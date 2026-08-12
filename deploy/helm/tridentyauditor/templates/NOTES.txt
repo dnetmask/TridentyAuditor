@@ -1,0 +1,18 @@
+TridentyAuditor (Fase 1) desplegado.
+
+Este chart cubre el tier pooled con la API en un solo Deployment. Pendiente
+para fases siguientes (ver docs/architecture, sección 08):
+
+  - Kong/Traefik como API Gateway dedicado (hoy el Service se expone directo)
+  - Keycloak (SSO/OIDC) — hoy la API valida JWT HS256 propio
+  - Vault / External Secrets Operator en lugar de `existingSecret` estático
+  - RabbitMQ/NATS para notificaciones asíncronas
+  - Prometheus/Grafana/Loki + Velero para observabilidad y continuidad
+  - Subchart o values-tier-aislado.yaml para el tier dedicado por tenant
+
+{{- if .Values.ingress.enabled }}
+API disponible en: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}
+{{- else }}
+Ingress deshabilitado — usa `kubectl port-forward` o habilita
+`ingress.enabled=true` en values.yaml.
+{{- end }}

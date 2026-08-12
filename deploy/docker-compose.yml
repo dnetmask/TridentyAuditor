@@ -1,0 +1,47 @@
+name: tridentyauditor
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tridenty
+      POSTGRES_PASSWORD: tridenty
+      POSTGRES_DB: tridentyauditor
+    ports:
+      - "5432:5432"
+    volumes:
+      - tridenty_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tridenty"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ../backend
+    environment:
+      TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
+  api:
+    build:
+      context: ../backend
+    environment:
+      TRIDENTY_ENVIRONMENT: local
+      TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
+      TRIDENTY_JWT_SECRET: dev-secret-change-me
+      TRIDENTY_ADMIN_BOOTSTRAP_TOKEN: dev-admin-token-change-me
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  tridenty_pgdata:

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: tridentyauditor
+description: >
+  TridentyAuditor — plataforma GRC multitenant. Esqueleto de Fase 1: API
+  (motor de frameworks, tenants, MOD·DOC) + Postgres externo. Ver sección 05
+  del documento de arquitectura para el stack completo objetivo
+  (Kong, Keycloak, Vault, RabbitMQ/NATS, observabilidad) — se incorpora por
+  fases, no todo de una vez.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
