@@ -12,7 +12,7 @@ frameworks (dominio, control, riesgo, evidencia, hallazgo) — ver
 | MOD·DOC | Control documental | 1 | ✅ Implementado | [mod-doc.md](mod-doc.md) |
 | MOD·RSK | Gestión de riesgos | 1 | ✅ Implementado | [mod-rsk.md](mod-rsk.md) |
 | MOD·SOA | SoA · Anexo A | 1 | ✅ Implementado | [mod-soa.md](mod-soa.md) |
-| MOD·AUD | Auditoría interna | 1 | ⏳ Pendiente | [mod-aud.md](mod-aud.md) |
+| MOD·AUD | Auditoría interna | 1 | ✅ Implementado | [mod-aud.md](mod-aud.md) |
 | MOD·WZD | Asistente paso a paso | 1 | ✅ Implementado | [mod-wzd.md](mod-wzd.md) |
 | MOD·KPI | Indicadores y revisión | 1 | ⏳ Pendiente | [mod-kpi.md](mod-kpi.md) |
 | MOD·TRN | Capacitación y cultura | 1 | ⏳ Pendiente | [mod-trn.md](mod-trn.md) |

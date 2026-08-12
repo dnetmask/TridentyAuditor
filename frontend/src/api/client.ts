@@ -241,4 +241,82 @@ export const api = {
       control_ids: string[];
     }>,
   ) => request<import("./types").Risk>(`/api/v1/risk/risks/${riskId}`, { method: "PATCH", token, body: payload }),
+
+  // --- MOD·AUD (auditoría interna) ---
+  listAuditPrograms: (token: string) =>
+    request<import("./types").AuditProgram[]>("/api/v1/audit/programs", { token }),
+
+  createAuditProgram: (
+    token: string,
+    payload: {
+      title: string;
+      scope?: string | null;
+      domain_id?: string | null;
+      auditor_user_id?: string | null;
+      planned_date?: string | null;
+    },
+  ) => request<import("./types").AuditProgram>("/api/v1/audit/programs", { method: "POST", token, body: payload }),
+
+  updateAuditProgram: (
+    token: string,
+    programId: string,
+    payload: Partial<{
+      title: string;
+      scope: string | null;
+      domain_id: string | null;
+      auditor_user_id: string | null;
+      planned_date: string | null;
+      executed_date: string | null;
+      status: import("./types").AuditStatus;
+    }>,
+  ) =>
+    request<import("./types").AuditProgram>(`/api/v1/audit/programs/${programId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  listAuditFindings: (token: string, auditId?: string) =>
+    request<import("./types").AuditFinding[]>(
+      `/api/v1/audit/findings${auditId ? `?audit_id=${auditId}` : ""}`,
+      { token },
+    ),
+
+  createAuditFinding: (
+    token: string,
+    payload: {
+      audit_id: string;
+      control_id?: string | null;
+      classification: import("./types").FindingClassification;
+      description: string;
+      root_cause?: string | null;
+      corrective_action?: string | null;
+      owner_user_id?: string | null;
+      due_date?: string | null;
+    },
+  ) => request<import("./types").AuditFinding>("/api/v1/audit/findings", { method: "POST", token, body: payload }),
+
+  updateAuditFinding: (
+    token: string,
+    findingId: string,
+    payload: Partial<{
+      control_id: string | null;
+      classification: import("./types").FindingClassification;
+      description: string;
+      root_cause: string | null;
+      corrective_action: string | null;
+      owner_user_id: string | null;
+      due_date: string | null;
+      status: import("./types").FindingStatus;
+      evidence_document_id: string | null;
+    }>,
+  ) =>
+    request<import("./types").AuditFinding>(`/api/v1/audit/findings/${findingId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  auditSummary: (token: string) =>
+    request<import("./types").AuditSummary>("/api/v1/audit/summary", { token }),
 };

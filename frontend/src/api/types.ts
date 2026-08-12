@@ -223,3 +223,52 @@ export interface Risk {
   created_at: string;
   updated_at: string;
 }
+
+// --- MOD·AUD (auditoría interna) ---
+
+export type AuditStatus = "planned" | "in_progress" | "completed";
+export type FindingClassification = "major_nc" | "minor_nc" | "observation" | "improvement";
+export type FindingStatus = "open" | "in_progress" | "closed";
+
+export interface AuditProgram {
+  id: string;
+  title: string;
+  scope: string | null;
+  domain: DomainSummary | null;
+  auditor_user_id: string | null;
+  planned_date: string | null;
+  executed_date: string | null;
+  status: AuditStatus;
+  created_at: string;
+}
+
+export interface AuditFindingControl {
+  code: string;
+  name: string;
+}
+
+export interface AuditFinding {
+  id: string;
+  audit_id: string;
+  control: AuditFindingControl | null;
+  classification: FindingClassification;
+  description: string;
+  root_cause: string | null;
+  corrective_action: string | null;
+  owner_user_id: string | null;
+  due_date: string | null;
+  status: FindingStatus;
+  evidence_document_id: string | null;
+  closed_at: string | null;
+  created_at: string;
+}
+
+export interface AuditSummary {
+  total_programs: number;
+  total_findings: number;
+  open_findings: number;
+  in_progress_findings: number;
+  closed_findings: number;
+  major_nc: number;
+  minor_nc: number;
+}

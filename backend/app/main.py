@@ -7,6 +7,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.compliance.router import router as compliance_router
 from app.core.config import get_settings
@@ -86,6 +87,7 @@ app.include_router(wizard_router)
 app.include_router(soa_router)
 app.include_router(risk_router)
 app.include_router(compliance_router)
+app.include_router(audit_router)
 
 
 @app.get("/health", tags=["health"])

@@ -36,6 +36,10 @@ default.
 
 - MOD·RSK — la evidencia de tratamiento de riesgos responde "¿se aplicó el
   tratamiento?", una pregunta distinta de "¿el control está cumplido?".
+- MOD·AUD — cerrar un hallazgo también exige evidencia aprobada (mismo
+  candado, ver [mod-aud.md](mod-aud.md)), pero es una señal de "¿se corrigió
+  lo que encontró el auditor?", no de "¿el control está cumplido?" — igual
+  naturaleza que MOD·RSK, por eso queda fuera del promedio por ahora.
 - NIST CSF 2.0 — Fase 2, sin cargar todavía.
 
 ## Cómo se actualiza en la UI
@@ -66,5 +70,5 @@ número se pone al día en la próxima navegación que dispare `refresh()`.
   (`app/compliance/service.py`), no son configurables por tenant.
 - Sin serie histórica — el número es el estado actual, no hay gráfico de
   tendencia todavía.
-- Cuando se integre MOD·RSK y NIST CSF 2.0 habrá que decidir si entran al
-  mismo promedio o quedan como indicadores aparte.
+- Cuando se integren MOD·RSK, MOD·AUD y NIST CSF 2.0 habrá que decidir si
+  entran al mismo promedio o quedan como indicadores aparte.
