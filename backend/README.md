@@ -13,6 +13,9 @@ docker compose up --build
 ```
 
 API en `http://localhost:8000`, docs interactivas en `http://localhost:8000/docs`.
+El Swagger UI se sirve desde assets locales (`app/static/swagger-ui`, vendorizados
+de `swagger-ui-dist`), no desde un CDN — funciona sin salida a internet, algo
+relevante para el tier aislado on-prem/air-gapped de la sección 04.
 
 ## Correr localmente sin contenedores
 
