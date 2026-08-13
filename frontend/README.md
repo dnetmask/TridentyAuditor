@@ -7,7 +7,14 @@ raíz del repo para el diseño de cada módulo.
 
 ## Correr en desarrollo
 
-Con el backend ya corriendo (ver `../backend/README.md` o `../deploy`):
+**Con Docker (no requiere Node/npm instalados):** el `docker-compose.yml` de
+`../deploy` ya incluye el servicio `frontend` — `cd ../deploy && docker
+compose up --build` levanta Postgres, la API y el frontend juntos. El código
+fuente se monta como volumen, así que los cambios en `src/` recargan solo
+(hot reload de Vite) sin reconstruir la imagen.
+
+**Sin Docker**, con el backend ya corriendo (ver `../backend/README.md` o
+`../deploy`):
 
 ```bash
 cd frontend

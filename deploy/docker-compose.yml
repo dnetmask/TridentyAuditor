@@ -45,5 +45,21 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  frontend:
+    build:
+      context: ../frontend
+    environment:
+      # El navegador corre en el host, no en la red de Docker, así que debe
+      # apuntar al puerto publicado del host (8001), no al puerto interno
+      # del contenedor api (8000).
+      VITE_API_BASE_URL: http://localhost:8001
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
 volumes:
   tridenty_pgdata:
