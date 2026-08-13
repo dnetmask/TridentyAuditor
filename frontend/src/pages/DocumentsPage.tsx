@@ -5,6 +5,24 @@ import { useCompliance } from "../context/ComplianceContext";
 import { StatusBadge } from "../components/StatusBadge";
 import type { DocumentDetail } from "../api/types";
 
+function formatFileSize(bytes: number | null): string {
+  if (bytes == null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = window.document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  window.document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 const DOCUMENT_TYPES = [
   { value: "policy", label: "Política" },
   { value: "procedure", label: "Procedimiento" },
@@ -56,6 +74,16 @@ export function DocumentsPage() {
       setError(err instanceof ApiError ? err.message : "La operación falló");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleDownload(documentId: string, versionNumber: number) {
+    setError(null);
+    try {
+      const { blob, filename } = await api.downloadVersionFile(token, documentId, versionNumber);
+      triggerBrowserDownload(blob, filename);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo descargar el archivo");
     }
   }
 
@@ -127,6 +155,7 @@ export function DocumentsPage() {
                             canReview={canReview}
                             busy={busy}
                             onAction={runAction}
+                            onDownload={handleDownload}
                           />
                         </td>
                       </tr>
@@ -164,6 +193,7 @@ function DocumentDetailPanel({
   canReview,
   busy,
   onAction,
+  onDownload,
 }: {
   doc: DocumentDetail;
   token: string;
@@ -171,6 +201,7 @@ function DocumentDetailPanel({
   canReview: boolean;
   busy: boolean;
   onAction: (action: () => Promise<unknown>) => Promise<void>;
+  onDownload: (documentId: string, versionNumber: number) => void;
 }) {
   const [showNewVersion, setShowNewVersion] = useState(false);
   const hasOpenVersion = doc.versions.some((v) => v.status === "draft" || v.status === "in_review");
@@ -185,12 +216,21 @@ function DocumentDetailPanel({
               <strong>v{v.version_number}</strong> · <StatusBadge status={v.status} />
             </span>
             <span className="muted">
-              {v.storage_ref} · creado por {v.created_by}
+              {v.original_filename ?? "sin archivo"}
+              {v.file_size != null ? ` (${formatFileSize(v.file_size)})` : ""} · creado por {v.created_by}
               {v.approved_by ? ` · aprobado por ${v.approved_by}` : ""}
             </span>
             {v.change_summary && <span className="muted">{v.change_summary}</span>}
           </div>
           <div className="version-actions">
+            {v.original_filename && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => onDownload(doc.id, v.version_number)}
+              >
+                Descargar
+              </button>
+            )}
             {v.status === "draft" && canWrite && (
               <button
                 className="btn btn-secondary btn-sm"
@@ -262,13 +302,17 @@ function CreateDocumentModal({
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [documentType, setDocumentType] = useState("policy");
-  const [storageRef, setStorageRef] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [retentionMonths, setRetentionMonths] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!file) {
+      setError("Selecciona un archivo para adjuntar");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -276,7 +320,7 @@ function CreateDocumentModal({
         code,
         title,
         document_type: documentType,
-        storage_ref: storageRef,
+        file,
         retention_months: retentionMonths ? Number(retentionMonths) : null,
       });
       onCreated();
@@ -313,13 +357,12 @@ function CreateDocumentModal({
             )}
           </div>
           <div className="field">
-            <label htmlFor="storage-ref">Referencia de almacenamiento</label>
+            <label htmlFor="file">Archivo</label>
             <input
-              id="storage-ref"
+              id="file"
+              type="file"
               required
-              value={storageRef}
-              onChange={(e) => setStorageRef(e.target.value)}
-              placeholder="s3://tenant/pol-sgsi-001-v1.pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </div>
           <div className="field">
@@ -355,18 +398,22 @@ function NewVersionModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [storageRef, setStorageRef] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [changeSummary, setChangeSummary] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!file) {
+      setError("Selecciona un archivo para adjuntar");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
       await api.createVersion(token, documentId, {
-        storage_ref: storageRef,
+        file,
         change_summary: changeSummary || null,
       });
       onCreated();
@@ -384,8 +431,8 @@ function NewVersionModal({
         {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
         <form className="stacked" onSubmit={handleSubmit}>
           <div className="field">
-            <label htmlFor="v-storage-ref">Referencia de almacenamiento</label>
-            <input id="v-storage-ref" required value={storageRef} onChange={(e) => setStorageRef(e.target.value)} />
+            <label htmlFor="v-file">Archivo</label>
+            <input id="v-file" type="file" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </div>
           <div className="field">
             <label htmlFor="change-summary">Resumen del cambio</label>

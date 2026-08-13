@@ -39,6 +39,70 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await res.json()) as T;
 }
 
+// Para multipart/form-data (subida de archivos) — sin fijar Content-Type a
+// mano, el navegador agrega el boundary correcto solo si lo dejamos vacío.
+async function requestFormData<T>(
+  path: string,
+  formData: FormData,
+  token: string,
+  method: "POST" = "POST",
+): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const data = await res.json();
+      detail = data.detail ?? detail;
+    } catch {
+      // response wasn't JSON — keep statusText
+    }
+    throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+
+  return (await res.json()) as T;
+}
+
+function filenameFromContentDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const match = /filename\*?=(?:UTF-8''|")?([^";]+)"?/i.exec(header);
+  return match ? decodeURIComponent(match[1]) : fallback;
+}
+
+// Descarga un binario protegido con Authorization: Bearer — no se puede usar
+// un <a href> plano porque no lleva el token, así que se trae como blob y se
+// dispara la descarga desde JS (ver DocumentsPage.tsx).
+export async function downloadDocumentVersionFile(
+  token: string,
+  documentId: string,
+  versionNumber: number,
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/documents/${documentId}/versions/${versionNumber}/file`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const data = await res.json();
+      detail = data.detail ?? detail;
+    } catch {
+      // response wasn't JSON — keep statusText
+    }
+    throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  const blob = await res.blob();
+  const filename = filenameFromContentDisposition(
+    res.headers.get("content-disposition"),
+    `documento-v${versionNumber}`,
+  );
+  return { blob, filename };
+}
+
 export const api = {
   // --- autenticación ---
   login: (email: string, password: string) =>
@@ -92,22 +156,34 @@ export const api = {
       code: string;
       title: string;
       document_type: string;
-      storage_ref: string;
+      file: File;
       retention_months?: number | null;
       change_summary?: string | null;
     },
-  ) => request<import("./types").DocumentDetail>("/api/v1/documents", { method: "POST", token, body: payload }),
+  ) => {
+    const form = new FormData();
+    form.set("code", payload.code);
+    form.set("title", payload.title);
+    form.set("document_type", payload.document_type);
+    if (payload.retention_months != null) form.set("retention_months", String(payload.retention_months));
+    if (payload.change_summary) form.set("change_summary", payload.change_summary);
+    form.set("file", payload.file);
+    return requestFormData<import("./types").DocumentDetail>("/api/v1/documents", form, token);
+  },
 
-  createVersion: (
-    token: string,
-    documentId: string,
-    payload: { storage_ref: string; change_summary?: string | null },
-  ) =>
-    request<import("./types").DocumentVersion>(`/api/v1/documents/${documentId}/versions`, {
-      method: "POST",
+  createVersion: (token: string, documentId: string, payload: { file: File; change_summary?: string | null }) => {
+    const form = new FormData();
+    if (payload.change_summary) form.set("change_summary", payload.change_summary);
+    form.set("file", payload.file);
+    return requestFormData<import("./types").DocumentVersion>(
+      `/api/v1/documents/${documentId}/versions`,
+      form,
       token,
-      body: payload,
-    }),
+    );
+  },
+
+  downloadVersionFile: (token: string, documentId: string, versionNumber: number) =>
+    downloadDocumentVersionFile(token, documentId, versionNumber),
 
   submitForReview: (token: string, documentId: string, versionNumber: number) =>
     request<import("./types").DocumentVersion>(

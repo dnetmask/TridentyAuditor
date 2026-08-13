@@ -12,12 +12,8 @@ def test_tenant_cannot_read_another_tenants_documents(client, make_tenant, auth_
 
     resp = client.post(
         "/api/v1/documents",
-        json={
-            "code": "POL-ISO",
-            "title": "Solo visible para el tenant A",
-            "document_type": "policy",
-            "storage_ref": "s3://a",
-        },
+        data={"code": "POL-ISO", "title": "Solo visible para el tenant A", "document_type": "policy"},
+        files={"file": ("a.pdf", b"%PDF-1.4 a", "application/pdf")},
         headers=headers_a,
     )
     assert resp.status_code == 201
@@ -39,13 +35,9 @@ def test_tenants_can_reuse_document_codes(client, make_tenant, auth_headers):
     tenant_a = make_tenant()
     tenant_b = make_tenant()
 
-    payload = {
-        "code": "POL-SAME",
-        "title": "Mismo código, tenants distintos",
-        "document_type": "policy",
-        "storage_ref": "s3://same",
-    }
-    resp_a = client.post("/api/v1/documents", json=payload, headers=auth_headers(tenant_a["id"]))
-    resp_b = client.post("/api/v1/documents", json=payload, headers=auth_headers(tenant_b["id"]))
+    payload = {"code": "POL-SAME", "title": "Mismo código, tenants distintos", "document_type": "policy"}
+    file = {"file": ("same.pdf", b"%PDF-1.4 same", "application/pdf")}
+    resp_a = client.post("/api/v1/documents", data=payload, files=file, headers=auth_headers(tenant_a["id"]))
+    resp_b = client.post("/api/v1/documents", data=payload, files=file, headers=auth_headers(tenant_b["id"]))
     assert resp_a.status_code == 201
     assert resp_b.status_code == 201

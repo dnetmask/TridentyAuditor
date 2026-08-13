@@ -11,9 +11,24 @@ MOD·AUD, ...).
 - **Document**: identidad estable de un documento (código, título, tipo,
   vínculo opcional a un `Control` del motor de frameworks, retención).
 - **DocumentVersion**: cada versión de ese documento, con su propio ciclo de
-  vida. `storage_ref` es un placeholder para la referencia real en Object
-  Storage S3-compatible (sección 05) — el binario en sí no se maneja en este
-  esqueleto.
+  vida, más el binario subido (`original_filename`, `content_type`,
+  `file_size`) y una referencia interna `storage_ref` al archivo en disco.
+
+## Almacenamiento del binario
+
+Cada versión exige adjuntar un archivo real — ya no existe un campo de texto
+libre tipo `storage_ref` manual. El binario se guarda en disco local bajo
+`Settings.documents_storage_dir` (`TRIDENTY_DOCUMENTS_STORAGE_DIR`), en la
+ruta `{tenant_id}/{document_id}/{version_id}` (sin extensión — el nombre
+original solo se conserva como metadato para la descarga, así que no hay
+superficie de path traversal que sanear). En `deploy/docker-compose.yml`
+vive en el volumen `tridenty_documents`, igual que Postgres vive en
+`tridenty_pgdata` — sobrevive a `docker compose down` pero no a un `-v`.
+
+Es almacenamiento local, coherente con el tier on-prem/air-gapped de la
+sección 04 (funciona sin ningún servicio externo). Migrar a Object Storage
+S3-compatible con política WORM — para HA multi-réplica y retención
+inmutable de verdad — sigue pendiente como hardening de producción.
 
 ## Flujo de aprobación (copias controladas)
 
@@ -41,18 +56,25 @@ Todos requieren `Authorization: Bearer <jwt>` con claims `tenant_id`, `sub`,
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/v1/documents` | Crea un documento + versión 1 en `draft` |
+| POST | `/api/v1/documents` | `multipart/form-data` — crea un documento + versión 1 en `draft` con el archivo adjunto |
 | GET | `/api/v1/documents` | Lista documentos del tenant |
 | GET | `/api/v1/documents/{id}` | Detalle con todas sus versiones |
-| POST | `/api/v1/documents/{id}/versions` | Abre una nueva versión en `draft` |
+| POST | `/api/v1/documents/{id}/versions` | `multipart/form-data` — abre una nueva versión en `draft` con su propio archivo |
+| GET | `/api/v1/documents/{id}/versions/{n}/file` | Descarga el binario de esa versión (`Content-Disposition: attachment`) |
 | POST | `/api/v1/documents/{id}/versions/{n}/submit` | `draft` → `in_review` |
 | POST | `/api/v1/documents/{id}/versions/{n}/reject` | `in_review` → `draft` |
 | POST | `/api/v1/documents/{id}/versions/{n}/approve` | `in_review` → `approved` |
+
+Los dos POST que crean documento/versión reciben `multipart/form-data` (campos
+de texto vía `Form` + el archivo vía `File`), no JSON — es la única forma de
+adjuntar un binario en el mismo request. Límite de tamaño configurable con
+`TRIDENTY_DOCUMENTS_MAX_FILE_SIZE_MB` (25 MB por defecto).
 
 ## Pendiente
 
 - Listas maestras y política de retención automatizada (hoy `retention_months`
   se guarda pero no dispara ninguna acción).
-- Subida real a Object Storage S3-compatible con política WORM.
+- Migrar el binario de disco local a Object Storage S3-compatible con
+  política WORM (ver "Almacenamiento del binario" arriba).
 - Reglas de quién puede aprobar (hoy cualquier `role` autenticado puede;
   falta el chequeo de rol Admin del tenant / Dueño de control de la sección 07).

@@ -44,6 +44,10 @@ COPY backend/scripts ./scripts
 COPY --from=frontend-builder /frontend/dist ./app/static/frontend
 
 RUN useradd --create-home --uid 1000 tridenty
+# El volumen de MOD·DOC (ver deploy/docker-compose.yml) monta aquí encima —
+# crearlo y darle dueño ahora es lo que Docker copia al volumen la primera
+# vez que se usa, así el proceso sin privilegios de abajo puede escribir.
+RUN mkdir -p /app/data/documents && chown -R tridenty:tridenty /app/data
 USER tridenty
 
 EXPOSE 8000

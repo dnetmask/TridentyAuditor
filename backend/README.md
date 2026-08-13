@@ -86,6 +86,16 @@ Las pruebas necesitan Postgres (usan RLS real, no se simula con SQLite).
 Exporta `TRIDENTY_DATABASE_URL` apuntando a una base de pruebas o usa
 `docker compose -f ../deploy/docker-compose.yml up -d db` primero.
 
+## Almacenamiento de archivos (MOD·DOC)
+
+Los binarios que se suben en MOD·DOC (política, procedimiento, evidencia...)
+se guardan en disco local bajo `TRIDENTY_DOCUMENTS_STORAGE_DIR` (por defecto
+`./data/documents`). Con Docker Compose vive en el volumen `tridenty_documents`
+— persiste entre reinicios igual que la base de datos. Límite de tamaño por
+archivo configurable con `TRIDENTY_DOCUMENTS_MAX_FILE_SIZE_MB` (25 MB por
+defecto). Ver [`docs/modules/mod-doc.md`](../docs/modules/mod-doc.md) para el
+detalle de por qué es disco local y no Object Storage S3 todavía.
+
 ## Migraciones
 
 ```bash

@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     super_admin_password: str | None = None
     super_admin_name: str = "Super Admin"
 
+    # Almacenamiento de los binarios de MOD·DOC — disco local bajo un volumen
+    # (coherente con el tier on-prem/air-gapped de la sección 04: funciona sin
+    # ningún servicio externo). Migrar a Object Storage S3-compatible con
+    # política WORM es trabajo pendiente de hardening para producción, no de
+    # esta fase (ver docs/modules/mod-doc.md).
+    documents_storage_dir: str = "./data/documents"
+    documents_max_file_size_mb: int = 25
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

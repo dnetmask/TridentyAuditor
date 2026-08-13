@@ -11,3 +11,7 @@ htmlcov/
 # backend/Dockerfile) — nunca se genera fuera de una imagen Docker o de una
 # verificación manual, no debe versionarse.
 app/static/frontend/
+
+# Binarios subidos a MOD·DOC en desarrollo local sin Docker (ver
+# Settings.documents_storage_dir) — en Docker viven en un volumen aparte.
+data/

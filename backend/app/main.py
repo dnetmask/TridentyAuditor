@@ -80,6 +80,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Sin esto el navegador oculta este header a fetch() en peticiones
+    # cross-origin — el nombre real del archivo nunca llegaría al cliente en
+    # desarrollo (frontend :5173, API :8000); en producción el frontend se
+    # sirve desde el mismo origen que la API (ver SPAStaticFiles) así que ahí
+    # no haría falta, pero también se necesita para dev con Vite.
+    expose_headers=["Content-Disposition"],
 )
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

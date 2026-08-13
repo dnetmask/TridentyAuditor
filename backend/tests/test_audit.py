@@ -1,12 +1,8 @@
 def _approve_document(client, headers, code="EVID-001"):
     resp = client.post(
         "/api/v1/documents",
-        json={
-            "code": code,
-            "title": "Evidencia de prueba",
-            "document_type": "record",
-            "storage_ref": "s3://bucket/evid.pdf",
-        },
+        data={"code": code, "title": "Evidencia de prueba", "document_type": "record"},
+        files={"file": ("evidencia.pdf", b"%PDF-1.4 evidencia", "application/pdf")},
         headers=headers,
     )
     assert resp.status_code == 201, resp.text
@@ -126,12 +122,8 @@ def test_closing_finding_requires_approved_evidence(client, make_tenant, auth_he
 
     draft_doc = client.post(
         "/api/v1/documents",
-        json={
-            "code": "CAPA-DRAFT-001",
-            "title": "Plan sin aprobar",
-            "document_type": "record",
-            "storage_ref": "s3://bucket/draft.pdf",
-        },
+        data={"code": "CAPA-DRAFT-001", "title": "Plan sin aprobar", "document_type": "record"},
+        files={"file": ("draft.pdf", b"%PDF-1.4 draft", "application/pdf")},
         headers=headers,
     ).json()["id"]
     resp = client.patch(

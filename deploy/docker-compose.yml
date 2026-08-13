@@ -54,8 +54,13 @@ services:
       # ambas, el arranque no crea ninguna cuenta y sigue el flujo manual.
       TRIDENTY_SUPER_ADMIN_EMAIL: ${TRIDENTY_SUPER_ADMIN_EMAIL:-}
       TRIDENTY_SUPER_ADMIN_PASSWORD: ${TRIDENTY_SUPER_ADMIN_PASSWORD:-}
+      # Binarios de MOD·DOC (documentos subidos) — en un volumen aparte para
+      # que sobrevivan a `docker compose down` igual que la base de datos.
+      TRIDENTY_DOCUMENTS_STORAGE_DIR: /app/data/documents
     ports:
       - "8001:8000"
+    volumes:
+      - tridenty_documents:/app/data/documents
     depends_on:
       db:
         condition: service_healthy
@@ -64,3 +69,4 @@ services:
 
 volumes:
   tridenty_pgdata:
+  tridenty_documents:

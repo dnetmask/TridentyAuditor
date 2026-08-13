@@ -1,9 +1,11 @@
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.documents import storage
 from app.documents.models import Document, DocumentStatus, DocumentVersion
 
 
@@ -21,6 +23,16 @@ class VersionNotFound(DocumentError):
 
 class InvalidTransition(DocumentError):
     pass
+
+
+class FileMissing(DocumentError):
+    """El registro existe pero el binario no está en el almacenamiento.
+
+    Solo debería darse en versiones creadas antes de que MOD·DOC exigiera
+    subir un archivo (storage_ref manual tipo ``s3://...`` que nunca tuvo un
+    binario real detrás) o si alguien borró el volumen de almacenamiento a
+    mano.
+    """
 
 
 def has_approved_version(db: Session, tenant_id: str, document_id: uuid.UUID) -> bool:
@@ -66,9 +78,11 @@ def create_document(
     document_type: str,
     control_id: uuid.UUID | None,
     retention_months: int | None,
-    storage_ref: str,
     created_by: str,
     change_summary: str | None,
+    file_content: bytes,
+    original_filename: str,
+    content_type: str | None,
 ) -> Document:
     document = Document(
         tenant_id=tenant_id,
@@ -79,14 +93,24 @@ def create_document(
         retention_months=retention_months,
     )
     db.add(document)
+    # Flush primero para que un código duplicado falle (IntegrityError, 409)
+    # antes de escribir nada a disco — evita dejar un archivo huérfano.
     db.flush()
 
+    version_id = uuid.uuid4()
+    storage_ref = storage.build_storage_ref(tenant_id, document.id, version_id)
+    storage.save(storage_ref, file_content)
+
     version = DocumentVersion(
+        id=version_id,
         tenant_id=tenant_id,
         document_id=document.id,
         version_number=1,
         status=DocumentStatus.DRAFT,
         storage_ref=storage_ref,
+        original_filename=original_filename,
+        content_type=content_type,
+        file_size=len(file_content),
         created_by=created_by,
         change_summary=change_summary,
     )
@@ -115,9 +139,11 @@ def create_new_version(
     tenant_id: str,
     document_id: uuid.UUID,
     *,
-    storage_ref: str,
     created_by: str,
     change_summary: str | None,
+    file_content: bytes,
+    original_filename: str,
+    content_type: str | None,
 ) -> DocumentVersion:
     document = _get_document(db, tenant_id, document_id)
     if any(v.status in (DocumentStatus.DRAFT, DocumentStatus.IN_REVIEW) for v in document.versions):
@@ -125,12 +151,21 @@ def create_new_version(
             "Ya existe una versión en borrador o revisión; ciérrela antes de abrir otra"
         )
     next_number = max((v.version_number for v in document.versions), default=0) + 1
+
+    version_id = uuid.uuid4()
+    storage_ref = storage.build_storage_ref(tenant_id, document.id, version_id)
+    storage.save(storage_ref, file_content)
+
     version = DocumentVersion(
+        id=version_id,
         tenant_id=tenant_id,
         document_id=document.id,
         version_number=next_number,
         status=DocumentStatus.DRAFT,
         storage_ref=storage_ref,
+        original_filename=original_filename,
+        content_type=content_type,
+        file_size=len(file_content),
         created_by=created_by,
         change_summary=change_summary,
     )
@@ -167,6 +202,16 @@ def reject_version(db: Session, tenant_id: str, document_id: uuid.UUID, version_
     version.status = DocumentStatus.DRAFT
     db.flush()
     return version
+
+
+def get_version_file(
+    db: Session, tenant_id: str, document_id: uuid.UUID, version_number: int
+) -> tuple[DocumentVersion, Path]:
+    version = _get_version(db, tenant_id, document_id, version_number)
+    path = storage.path_for(version.storage_ref)
+    if not path.is_file():
+        raise FileMissing(f"{document_id}/{version_number}")
+    return version, path
 
 
 def approve_version(

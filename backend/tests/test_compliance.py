@@ -1,12 +1,8 @@
 def _approve_document(client, headers, code="EVID-001"):
     resp = client.post(
         "/api/v1/documents",
-        json={
-            "code": code,
-            "title": "Evidencia de prueba",
-            "document_type": "record",
-            "storage_ref": "s3://bucket/evid.pdf",
-        },
+        data={"code": code, "title": "Evidencia de prueba", "document_type": "record"},
+        files={"file": ("evidencia.pdf", b"%PDF-1.4 evidencia", "application/pdf")},
         headers=headers,
     )
     assert resp.status_code == 201, resp.text
@@ -61,12 +57,8 @@ def test_unapproved_evidence_does_not_count(client, make_tenant, auth_headers):
 
     resp = client.post(
         "/api/v1/documents",
-        json={
-            "code": "DRAFT-001",
-            "title": "Sin aprobar",
-            "document_type": "record",
-            "storage_ref": "s3://bucket/draft.pdf",
-        },
+        data={"code": "DRAFT-001", "title": "Sin aprobar", "document_type": "record"},
+        files={"file": ("draft.pdf", b"%PDF-1.4 draft", "application/pdf")},
         headers=headers,
     )
     draft_doc_id = resp.json()["id"]

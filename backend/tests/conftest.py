@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -9,6 +10,9 @@ os.environ.setdefault(
     "postgresql+psycopg2://tridenty:tridenty@localhost:5432/tridentyauditor_test",
 )
 os.environ.setdefault("TRIDENTY_JWT_SECRET", "test-secret")
+# Aislado en un directorio temporal propio del proceso de pruebas — nunca el
+# ./data/documents de un checkout de desarrollo real.
+os.environ.setdefault("TRIDENTY_DOCUMENTS_STORAGE_DIR", tempfile.mkdtemp(prefix="tridenty-docs-test-"))
 
 import jwt
 import pytest
@@ -95,3 +99,62 @@ def make_tenant(client, super_admin_headers):
         return resp.json()
 
     return _make
+
+
+@pytest.fixture()
+def upload_document(client):
+    """POST /api/v1/documents como multipart/form-data — MOD·DOC exige un
+    archivo real adjunto, ya no acepta un ``storage_ref`` de texto libre."""
+
+    def _upload(
+        headers: dict[str, str],
+        *,
+        code: str,
+        title: str = "Documento de prueba",
+        document_type: str = "policy",
+        control_id: str | None = None,
+        retention_months: int | None = None,
+        change_summary: str | None = None,
+        filename: str = "evidencia.pdf",
+        content: bytes = b"%PDF-1.4 contenido de prueba",
+        content_type: str = "application/pdf",
+    ):
+        data = {"code": code, "title": title, "document_type": document_type}
+        if control_id is not None:
+            data["control_id"] = control_id
+        if retention_months is not None:
+            data["retention_months"] = str(retention_months)
+        if change_summary is not None:
+            data["change_summary"] = change_summary
+        return client.post(
+            "/api/v1/documents",
+            data=data,
+            files={"file": (filename, content, content_type)},
+            headers=headers,
+        )
+
+    return _upload
+
+
+@pytest.fixture()
+def upload_version(client):
+    def _upload(
+        headers: dict[str, str],
+        document_id: str,
+        *,
+        change_summary: str | None = None,
+        filename: str = "evidencia-v2.pdf",
+        content: bytes = b"%PDF-1.4 v2",
+        content_type: str = "application/pdf",
+    ):
+        data = {}
+        if change_summary is not None:
+            data["change_summary"] = change_summary
+        return client.post(
+            f"/api/v1/documents/{document_id}/versions",
+            data=data,
+            files={"file": (filename, content, content_type)},
+            headers=headers,
+        )
+
+    return _upload

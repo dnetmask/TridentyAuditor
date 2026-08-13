@@ -1,24 +1,13 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from app.documents.models import DocumentStatus
 
-
-class DocumentCreate(BaseModel):
-    code: str = Field(min_length=1, max_length=50)
-    title: str = Field(min_length=1, max_length=255)
-    document_type: str = Field(min_length=1, max_length=50)
-    control_id: uuid.UUID | None = None
-    retention_months: int | None = Field(default=None, ge=1)
-    storage_ref: str = Field(min_length=1, max_length=500)
-    change_summary: str | None = None
-
-
-class NewVersionCreate(BaseModel):
-    storage_ref: str = Field(min_length=1, max_length=500)
-    change_summary: str | None = None
+# Nota: no hay DocumentCreate/NewVersionCreate — ambos endpoints reciben
+# multipart/form-data (Form + UploadFile) porque exigen adjuntar un archivo,
+# no un body JSON. Ver documents/router.py.
 
 
 class DocumentVersionRead(BaseModel):
@@ -27,7 +16,9 @@ class DocumentVersionRead(BaseModel):
     id: uuid.UUID
     version_number: int
     status: DocumentStatus
-    storage_ref: str
+    original_filename: str | None
+    content_type: str | None
+    file_size: int | None
     change_summary: str | None
     created_by: str
     approved_by: str | None

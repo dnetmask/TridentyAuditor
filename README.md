@@ -19,7 +19,7 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Motor de frameworks | — | ✅ Esqueleto + seed ISO/IEC 27001:2022 |
 | Multitenencia (tier pooled, RLS) | — | ✅ Esqueleto |
 | Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
-| Control documental | MOD·DOC | ✅ Funcional (CRUD + versionado + aprobación) |
+| Control documental | MOD·DOC | ✅ Funcional (CRUD + versionado + aprobación + subida/descarga real de archivos) |
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (8 fases, evidencia obligatoria, desbloqueo por fase) |
 | Gestión de riesgos | MOD·RSK | ✅ Funcional (activos, matriz probabilidad×impacto, tratamiento, residual) |
 | SoA · Anexo A | MOD·SOA | ✅ Funcional (93 controles, exclusión con justificación, dueño) |

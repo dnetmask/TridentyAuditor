@@ -71,6 +71,9 @@ class DocumentVersion(Base):
         default=DocumentStatus.DRAFT,
     )
     storage_ref: Mapped[str] = mapped_column(String(500), nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -16,7 +16,9 @@ export interface DocumentVersion {
   id: string;
   version_number: number;
   status: DocumentStatus;
-  storage_ref: string;
+  original_filename: string | null;
+  content_type: string | null;
+  file_size: number | null;
   change_summary: string | null;
   created_by: string;
   approved_by: string | null;
