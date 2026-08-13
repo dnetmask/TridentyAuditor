@@ -59,12 +59,19 @@ para la matriz completa. Es una ayuda de UX, no el control de acceso real:
 el backend aplica las mismas reglas en cada endpoint aunque la UI no las
 muestre.
 
+La navegación vive en un menú lateral colapsable (mismo patrón que
+TridentyOT, otra plataforma del grupo, para mantener una sola línea de
+producto entre herramientas) — logo y nav en el sidebar, y una franja
+superior fija con el % de cumplimiento SGSI que no desaparece aunque el
+sidebar se colapse a solo íconos.
+
 ## Estructura
 
 ```
 src/api/         cliente fetch + tipos que reflejan los schemas del backend
 src/context/     sesión (usuario/tenant/rol/token) persistida en localStorage
-src/components/  Layout (nav por rol) y piezas compartidas (StatusBadge)
+src/components/  Layout (menú lateral colapsable, nav por rol) y piezas
+                 compartidas (StatusBadge, ComplianceMeter, icons)
 src/pages/       LoginPage, AdminTenantsPage, UsersPage,
                  WizardPage, DocumentsPage, FrameworksPage
 ```

@@ -7,8 +7,10 @@ function levelClass(percentage: number): string {
 }
 
 // Indicador siempre visible del avance de cumplimiento del SGSI — vive en
-// Layout.tsx, junto al menú superior, para que el tenant lo vea sin importar
-// en qué pantalla esté (ver ComplianceContext.tsx para el porqué del cálculo).
+// Layout.tsx, en la franja superior fija del área de contenido (no dentro
+// del sidebar, que se puede colapsar), para que el tenant lo vea sin
+// importar en qué pantalla esté ni si el menú lateral está expandido o no
+// (ver ComplianceContext.tsx para el porqué del cálculo).
 export function ComplianceMeter() {
   const { overview } = useCompliance();
   if (!overview) return null;
