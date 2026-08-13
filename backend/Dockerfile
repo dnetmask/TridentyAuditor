@@ -1,3 +1,20 @@
+# Build context: la raíz del repo (no backend/), porque esta imagen necesita
+# tanto backend/ como frontend/ — ver deploy/docker-compose.yml
+# (`context: .., dockerfile: backend/Dockerfile`). Todas las rutas COPY de
+# aquí en adelante son relativas a la raíz del repo, no a este directorio.
+
+FROM node:22-slim AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm install
+COPY frontend/ ./
+# Mismo origen en runtime (esta imagen sirve la SPA y la API en el mismo
+# puerto, ver app/main.py::SPAStaticFiles), así que el cliente no necesita
+# una URL absoluta de API — las peticiones relativas ya apuntan al lugar
+# correcto sea cual sea el host/puerto publicado.
+ENV VITE_API_BASE_URL=""
+RUN npm run build
+
 FROM python:3.11-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -14,15 +31,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
     && rm -rf /var/lib/apt/lists/*
-COPY pyproject.toml ./
-COPY app ./app
+COPY backend/pyproject.toml ./
+COPY backend/app ./app
 RUN pip install --no-cache-dir --prefix=/install .
 
 FROM base AS runtime
 COPY --from=builder /install /usr/local
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini ./
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./
+COPY backend/scripts ./scripts
+COPY --from=frontend-builder /frontend/dist ./app/static/frontend
 
 RUN useradd --create-home --uid 1000 tridenty
 USER tridenty

@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     # default). Comma-separated.
     cors_origins: str = "http://localhost:5173"
 
+    # Bootstrap opcional de la primera cuenta Super Admin al arrancar (útil en
+    # despliegues de contenedor donde no hay una terminal a mano para correr
+    # scripts/create_super_admin.py — ver TridentyOT como referencia de este
+    # patrón). Sin estas dos variables no pasa nada; con solo una definida, el
+    # arranque falla con un error claro en vez de crear una cuenta a medias.
+    super_admin_email: str | None = None
+    super_admin_password: str | None = None
+    super_admin_name: str = "Super Admin"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

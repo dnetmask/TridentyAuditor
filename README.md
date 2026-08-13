@@ -49,28 +49,44 @@ cd deploy
 docker compose up --build
 ```
 
-Esto levanta Postgres, la API en `http://localhost:8001` (docs interactivas
-en `/docs`) y el frontend en `http://localhost:5173` — los tres servicios,
-sin necesidad de tener Node/npm instalados en la máquina. El puerto host de
-la API se movió de 8000 a 8001 porque 8000 es un puerto común y suele
-chocar con otro proceso/contenedor ya corriendo en la máquina. El servicio
-`frontend` monta el código fuente como volumen, así que los cambios en
-`frontend/src` se reflejan al vuelo (hot reload de Vite) sin reconstruir la
-imagen. Ver [`backend/README.md`](backend/README.md) para correr el backend
-sin contenedores y ejecutar las pruebas.
+Un solo comando, un solo puerto: esto levanta Postgres y la API en
+`http://localhost:8001`, que **también sirve el frontend ya compilado** en
+esa misma URL (docs interactivas en `/docs`) — sin necesidad de tener
+Node/npm instalados en la máquina. `backend/Dockerfile` compila el frontend
+en una etapa `node:22` y copia el resultado a `app/static/frontend`; FastAPI
+lo sirve como archivos estáticos y cae a `index.html` para las rutas del
+lado del cliente (React Router), así que entrar directo a una URL como
+`/ruta-sgsi` o refrescar la página ahí funciona igual que con cualquier SPA.
+El puerto host de la API se movió de 8000 a 8001 porque 8000 es un puerto
+común y suele chocar con otro proceso/contenedor ya corriendo en la
+máquina. Ver [`backend/README.md`](backend/README.md) para correr el
+backend sin contenedores y ejecutar las pruebas.
 
-Si prefieres correr el frontend fuera de Docker (más rápido si ya tienes
-Node instalado):
+Para desarrollar el frontend con hot-reload (cambios en `frontend/src` se
+reflejan al vuelo, sin reconstruir nada) en vez de depender del build
+estático de arriba:
+
+```bash
+cd deploy
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Esto agrega un servicio `frontend` aparte con el dev server de Vite en
+`http://localhost:5173`, montando el código fuente como volumen. O, si ya
+tienes Node instalado y prefieres correrlo fuera de Docker:
 
 ```bash
 cd frontend
 npm install
-echo "VITE_API_BASE_URL=http://localhost:8001" > .env.local   # si el backend corre con docker compose
+echo "VITE_API_BASE_URL=http://localhost:8001" > .env.local   # el backend corre con docker compose
 npm run dev
 ```
 
-Ver [`frontend/README.md`](frontend/README.md) para el detalle. La primera
-cuenta (Super Admin) se crea con un script de bootstrap — ver
+Ver [`frontend/README.md`](frontend/README.md) para el detalle de ambos
+flujos. La primera cuenta (Super Admin) se crea automáticamente al arrancar
+si defines `TRIDENTY_SUPER_ADMIN_EMAIL`/`TRIDENTY_SUPER_ADMIN_PASSWORD`
+antes del primer `docker compose up` (ver `deploy/docker-compose.yml`), o a
+mano después con el script de bootstrap — ver
 [`backend/README.md`](backend/README.md#autenticación) y
 [`docs/modules/auth-roles.md`](docs/modules/auth-roles.md) para el modelo de
 roles completo.

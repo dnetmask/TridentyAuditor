@@ -1,0 +1,23 @@
+# Override para desarrollo activo del frontend: agrega el dev server de
+# Vite con hot-reload en :5173, en vez de depender del build estático que
+# ya sirve el servicio `api` (ver docker-compose.yml). Los cambios en
+# frontend/src se recargan solos, sin reconstruir ninguna imagen.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# El navegador sigue hablándole a la API por el puerto publicado del host
+# (8001), no por la red interna de Docker — por eso VITE_API_BASE_URL usa
+# localhost y no el nombre del servicio `api`.
+services:
+  frontend:
+    build:
+      context: ../frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8001
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api

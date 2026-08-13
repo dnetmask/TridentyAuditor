@@ -1,4 +1,13 @@
-# Tras el primer `docker compose up`, crea la cuenta Super Admin con:
+# Un solo `docker compose up --build` levanta Postgres + la API, que sirve
+# también el frontend ya compilado en el mismo puerto (ver
+# backend/app/main.py::SPAStaticFiles) — no hace falta Node/npm en el host.
+#
+# Para desarrollo activo del frontend con hot-reload (Vite dev server en
+# :5173 en vez del build estático), agregar el override:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Primera cuenta Super Admin: definir TRIDENTY_SUPER_ADMIN_EMAIL/_PASSWORD
+# más abajo antes del primer arranque, o crearla a mano después con:
 #   docker compose exec api python scripts/create_super_admin.py admin@netmask.co --name "Nombre"
 name: tridentyauditor
 
@@ -20,8 +29,10 @@ services:
       retries: 10
 
   migrate:
+    image: tridentyauditor-api:local
     build:
-      context: ../backend
+      context: ..
+      dockerfile: backend/Dockerfile
     environment:
       TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
     depends_on:
@@ -30,13 +41,19 @@ services:
     command: ["alembic", "upgrade", "head"]
 
   api:
+    image: tridentyauditor-api:local
     build:
-      context: ../backend
+      context: ..
+      dockerfile: backend/Dockerfile
     environment:
       TRIDENTY_ENVIRONMENT: local
       TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
       TRIDENTY_JWT_SECRET: dev-secret-change-me
       TRIDENTY_CORS_ORIGINS: http://localhost:5173
+      # Opcional — ver comentario de cabecera. Vacías por defecto: sin
+      # ambas, el arranque no crea ninguna cuenta y sigue el flujo manual.
+      TRIDENTY_SUPER_ADMIN_EMAIL: ${TRIDENTY_SUPER_ADMIN_EMAIL:-}
+      TRIDENTY_SUPER_ADMIN_PASSWORD: ${TRIDENTY_SUPER_ADMIN_PASSWORD:-}
     ports:
       - "8001:8000"
     depends_on:
@@ -44,22 +61,6 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-
-  frontend:
-    build:
-      context: ../frontend
-    environment:
-      # El navegador corre en el host, no en la red de Docker, así que debe
-      # apuntar al puerto publicado del host (8001), no al puerto interno
-      # del contenedor api (8000).
-      VITE_API_BASE_URL: http://localhost:8001
-    ports:
-      - "5173:5173"
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules
-    depends_on:
-      - api
 
 volumes:
   tridenty_pgdata:

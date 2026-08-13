@@ -12,15 +12,19 @@ cd ../deploy
 docker compose up --build
 ```
 
-API en `http://localhost:8001`, docs interactivas en `http://localhost:8001/docs`
-(el puerto host es 8001, no 8000, para no chocar con otro proceso que ya lo use
-en la máquina — dentro del contenedor uvicorn sigue escuchando en el 8000).
-El mismo `docker compose up` también levanta el frontend en
-`http://localhost:5173` (ver [`../frontend/README.md`](../frontend/README.md))
-— no hace falta tener Node/npm instalados para probar la plataforma completa.
-El Swagger UI se sirve desde assets locales (`app/static/swagger-ui`, vendorizados
-de `swagger-ui-dist`), no desde un CDN — funciona sin salida a internet, algo
-relevante para el tier aislado on-prem/air-gapped de la sección 04.
+API **y** frontend en `http://localhost:8001` — un solo puerto, un solo
+proceso. `Dockerfile` compila el frontend en una etapa de build con Node y
+copia el resultado a `app/static/frontend`; `app/main.py` lo sirve como
+estáticos y cae a `index.html` para rutas del lado del cliente (React
+Router), así que no hace falta tener Node/npm instalados para probar la
+plataforma completa (ver [`../frontend/README.md`](../frontend/README.md)
+para el flujo con hot-reload si vas a tocar el frontend). El puerto host es
+8001, no 8000, para no chocar con otro proceso que ya lo use en la máquina
+— dentro del contenedor uvicorn sigue escuchando en el 8000. Docs
+interactivas en `http://localhost:8001/docs`, servidas desde assets locales
+(`app/static/swagger-ui`, vendorizados de `swagger-ui-dist`), no desde un
+CDN — funciona sin salida a internet, algo relevante para el tier aislado
+on-prem/air-gapped de la sección 04.
 
 ## Correr localmente sin contenedores
 
@@ -45,7 +49,23 @@ modelo completo de roles (Super Admin, Admin del tenant, Auditor interno,
 Visualizador).
 
 La primera cuenta hay que crearla directamente en la base de datos (no
-existe todavía nadie que pueda llamar a `POST /api/v1/auth/users`):
+existe todavía nadie que pueda llamar a `POST /api/v1/auth/users`). Dos
+formas:
+
+**Por variables de entorno al arrancar** (útil en Docker, sin necesitar una
+terminal dentro del contenedor — ver `deploy/docker-compose.yml`):
+
+```bash
+TRIDENTY_SUPER_ADMIN_EMAIL=admin@netmask.co TRIDENTY_SUPER_ADMIN_PASSWORD=cambiame-ya \
+  uvicorn app.main:app
+```
+
+Sin ambas variables no pasa nada (sigue el flujo manual de abajo); con solo
+una definida, el arranque falla con un error claro en vez de crear una
+cuenta a medio configurar. Es idempotente — reiniciar no vuelve a crear la
+cuenta si ya existe.
+
+**A mano**, en cualquier momento:
 
 ```bash
 python scripts/create_super_admin.py admin@netmask.co --name "Nombre Apellido"

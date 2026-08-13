@@ -209,3 +209,52 @@ def test_password_hash_roundtrip():
     assert hashed != "correcthorse123"
     assert verify_password("correcthorse123", hashed)
     assert not verify_password("wrong", hashed)
+
+
+def test_bootstrap_super_admin_noop_without_env_vars():
+    from app.auth.service import bootstrap_super_admin
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        bootstrap_super_admin(db, email=None, password=None, full_name="Super Admin")
+    finally:
+        db.close()
+
+
+def test_bootstrap_super_admin_creates_account_once():
+    import uuid
+
+    from app.auth.models import User
+    from app.auth.service import bootstrap_super_admin
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        email = f"bootstrap-{uuid.uuid4().hex[:8]}@netmask.co"
+        bootstrap_super_admin(db, email=email, password="supersecret123", full_name="Root")
+        user = db.query(User).filter_by(email=email).one()
+        assert user.role.value == "super_admin"
+        assert user.tenant_id is None
+
+        # Idempotente: correrlo de nuevo (ej. reinicios del contenedor) no falla ni duplica.
+        bootstrap_super_admin(db, email=email, password="otra-cosa-distinta", full_name="Root")
+        assert db.query(User).filter_by(email=email).count() == 1
+    finally:
+        db.close()
+
+
+def test_bootstrap_super_admin_requires_both_vars_together():
+    import pytest
+
+    from app.auth.service import InvalidUser, bootstrap_super_admin
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        with pytest.raises(InvalidUser):
+            bootstrap_super_admin(db, email="solo-email@netmask.co", password=None, full_name="Root")
+        with pytest.raises(InvalidUser):
+            bootstrap_super_admin(db, email=None, password="solo-password", full_name="Root")
+    finally:
+        db.close()

@@ -6,9 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
+from app.auth.service import bootstrap_super_admin
 from app.compliance.router import router as compliance_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal
@@ -23,7 +25,25 @@ from app.wizard.router import router as wizard_router
 from app.wizard.seeds.methodology import seed_wizard_phases
 
 STATIC_DIR = Path(__file__).parent / "static"
+FRONTEND_DIR = Path(__file__).parent / "static" / "frontend"
 settings = get_settings()
+
+
+class SPAStaticFiles(StaticFiles):
+    """Sirve el build de React y cae a index.html para rutas del lado del
+    cliente (React Router) — ej. entrar directo a /ruta-sgsi o refrescar la
+    página ahí debe servir la SPA, no un 404, para que el router del
+    navegador tome el control. No aplica a /api/... : una ruta de API
+    desconocida debe seguir devolviendo 404, no HTML.
+    """
+
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and not path.startswith("api/"):
+                return await super().get_response("index.html", scope)
+            raise
 
 
 @asynccontextmanager
@@ -32,6 +52,12 @@ async def lifespan(app: FastAPI):
     try:
         seed_iso27001(db)
         seed_wizard_phases(db)
+        bootstrap_super_admin(
+            db,
+            email=settings.super_admin_email,
+            password=settings.super_admin_password,
+            full_name=settings.super_admin_name,
+        )
     finally:
         db.close()
     yield
@@ -93,3 +119,12 @@ app.include_router(audit_router)
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# Registrado al final a propósito: Starlette evalúa las rutas en orden de
+# registro, así que este mount en "/" solo recibe lo que ninguna ruta de
+# API/Docs/estáticos anterior haya reclamado ya. Si el build del frontend no
+# se copió a la imagen (ej. corriendo el backend solo, en desarrollo nativo),
+# el directorio no existe y se omite sin romper el resto de la API.
+if FRONTEND_DIR.is_dir():
+    app.mount("/", SPAStaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

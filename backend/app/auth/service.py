@@ -33,6 +33,36 @@ class UserNotFound(AuthError):
     pass
 
 
+def bootstrap_super_admin(db: Session, *, email: str | None, password: str | None, full_name: str) -> None:
+    """Crea la primera cuenta Super Admin desde variables de entorno, si se piden.
+
+    Sin ninguna de las dos variables, no hace nada — el bootstrap manual
+    (``scripts/create_super_admin.py``) sigue siendo la vía por defecto. Con
+    solo una de las dos definida, falla fuerte: a medio configurar es peor
+    que sin configurar, porque el arranque parecería exitoso sin haber
+    creado ninguna cuenta utilizable.
+    """
+    if not email and not password:
+        return
+    if not email or not password:
+        raise InvalidUser(
+            "TRIDENTY_SUPER_ADMIN_EMAIL y TRIDENTY_SUPER_ADMIN_PASSWORD deben definirse juntas"
+        )
+    existing = db.scalars(select(User).where(func.lower(User.email) == email.lower())).first()
+    if existing is not None:
+        return
+    db.add(
+        User(
+            email=email,
+            password_hash=hash_password(password),
+            full_name=full_name,
+            role=UserRole.SUPER_ADMIN,
+            tenant_id=None,
+        )
+    )
+    db.commit()
+
+
 def authenticate(db: Session, email: str, password: str) -> User:
     stmt = select(User).where(func.lower(User.email) == email.lower())
     user = db.scalars(stmt).first()

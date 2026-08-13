@@ -1,0 +1,12 @@
+# Build context ahora es la raíz del repo (ver backend/Dockerfile) — sin
+# esto, docker build empaquetaría .git, entornos virtuales y node_modules
+# enteros como contexto en cada build.
+.git
+**/__pycache__
+**/*.pyc
+backend/.venv
+backend/.pytest_cache
+frontend/node_modules
+frontend/dist
+docs
+deploy/helm
