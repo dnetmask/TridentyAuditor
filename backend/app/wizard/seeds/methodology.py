@@ -1,4 +1,4 @@
-"""Seed de las 8 fases del asistente paso a paso (MOD·WZD).
+"""Seed de las 8 fases de la Ruta SGSI (MOD·WZD) — solo para tenants ISO/IEC 27001:2022.
 
 Checklist de referencia por fase — práctica estándar de implementación de un
 SGSI ISO/IEC 27001, no texto normativo del estándar. La ``description`` de
@@ -6,11 +6,16 @@ cada tarea es una guía de qué evidencia suele demostrar que la tarea está
 resuelta (ejemplos, no la única forma válida). Cada tenant instancia su
 propia copia editable de estas tareas vía ``service.instantiate`` al
 arrancar el ciclo (ver sección 02 del documento de arquitectura).
+
+Un tenant CNO-1960 no ve esta ruta — ve la suya propia, ``cno_route.py``.
 """
 
 from sqlalchemy.orm import Session
 
+from app.frameworks.models import Framework
 from app.wizard.models import WizardPhase, WizardTaskTemplate
+
+FRAMEWORK_CODE = "ISO27001:2022"
 
 # (number, code, name, objective, [(title, description, requires_evidence), ...])
 PHASES: list[tuple[int, str, str, str, list[tuple[str, str | None, bool]]]] = [
@@ -239,11 +244,20 @@ def seed_wizard_phases(db: Session) -> None:
     Inserta lo que falte y también actualiza la ``description`` de las
     tareas ya existentes, para que revisar la guía de evidencia en este
     archivo se refleje en despliegues que ya habían sembrado el checklist.
+    Corre después de ``seed_iso27001`` (necesita el framework ya sembrado).
     """
+    framework = db.query(Framework).filter_by(code=FRAMEWORK_CODE).one()
+
     for number, code, name, objective, tasks in PHASES:
-        phase = db.query(WizardPhase).filter_by(number=number).one_or_none()
+        phase = (
+            db.query(WizardPhase)
+            .filter_by(framework_id=framework.id, number=number)
+            .one_or_none()
+        )
         if phase is None:
-            phase = WizardPhase(number=number, code=code, name=name, objective=objective)
+            phase = WizardPhase(
+                framework_id=framework.id, number=number, code=code, name=name, objective=objective
+            )
             db.add(phase)
             db.flush()
 

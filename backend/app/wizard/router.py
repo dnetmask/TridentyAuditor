@@ -5,20 +5,33 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
+from app.frameworks.models import Framework
+from app.tenants.models import Tenant
 from app.wizard import schemas, service
 from app.wizard.service import InvalidTransition, PhaseNotFound, TaskNotFound
 
 router = APIRouter(prefix="/api/v1/wizard", tags=["wizard (MOD·WZD)"])
 
-# Arrancar el ciclo SGSI es una decisión administrativa del tenant.
+# Arrancar la ruta (SGSI o CNO) es una decisión administrativa del tenant.
 can_instantiate = require_tenant_roles("tenant_admin")
 # Trabajar sobre las tareas: Admin del tenant o Auditor interno.
 can_write = require_tenant_roles("tenant_admin", "internal_auditor")
 
 
+def _tenant_framework_id(db: Session, tenant_id: str) -> uuid.UUID:
+    tenant = db.get(Tenant, tenant_id)
+    return tenant.framework_id
+
+
 @router.get("/phases", response_model=list[schemas.PhaseWithTemplatesRead])
-def list_phases(db: Session = Depends(get_db)):
-    return service.list_phases(db)
+def list_phases(framework_code: str | None = None, db: Session = Depends(get_db)):
+    framework_id = None
+    if framework_code is not None:
+        framework = db.query(Framework).filter_by(code=framework_code).one_or_none()
+        if framework is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Norma o estándar no encontrado")
+        framework_id = framework.id
+    return service.list_phases(db, framework_id=framework_id)
 
 
 @router.post("/instantiate", response_model=schemas.InstantiateResult, status_code=status.HTTP_201_CREATED)
@@ -26,7 +39,8 @@ def instantiate(
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(can_instantiate),
 ):
-    created = service.instantiate(db, principal.tenant_id)
+    framework_id = _tenant_framework_id(db, principal.tenant_id)
+    created = service.instantiate(db, principal.tenant_id, framework_id)
     return schemas.InstantiateResult(created=created)
 
 
@@ -35,7 +49,8 @@ def get_progress(
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(decode_tenant_token),
 ):
-    return service.get_progress(db, principal.tenant_id)
+    framework_id = _tenant_framework_id(db, principal.tenant_id)
+    return service.get_progress(db, principal.tenant_id, framework_id)
 
 
 @router.post("/tasks", response_model=schemas.TaskRead, status_code=status.HTTP_201_CREATED)

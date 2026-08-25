@@ -6,7 +6,7 @@ function levelClass(percentage: number): string {
   return "compliance-low";
 }
 
-// Indicador siempre visible del avance de cumplimiento del SGSI — vive en
+// Indicador siempre visible del avance de cumplimiento — vive en
 // Layout.tsx, en la franja superior fija del área de contenido (no dentro
 // del sidebar, que se puede colapsar), para que el tenant lo vea sin
 // importar en qué pantalla esté ni si el menú lateral está expandido o no
@@ -25,7 +25,7 @@ export function ComplianceMeter() {
       <div className="compliance-meter-bar">
         <div className="compliance-meter-fill" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
       </div>
-      <span className="compliance-meter-label">{pct}% cumplimiento SGSI</span>
+      <span className="compliance-meter-label">{pct}% cumplimiento</span>
     </div>
   );
 }

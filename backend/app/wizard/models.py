@@ -17,20 +17,33 @@ class WizardTaskStatus(str, enum.Enum):
 
 
 class WizardPhase(Base):
-    """Las 8 fases del ciclo PDCA (sección 02 del documento de arquitectura).
+    """Una fase de la ruta paso a paso de una norma (ISO: "Ruta SGSI", CNO-1960: "Ruta CNO").
 
-    Dato de referencia global, igual que Framework — no vive por tenant, y
-    cargar/editar el checklist no requiere tocar el esquema.
+    Dato de referencia global, igual que Framework/Domain — no vive por
+    tenant, y cargar/editar el checklist no requiere tocar el esquema. Cada
+    norma trae su propia ruta (``framework_id``), con su propia numeración de
+    fases: no hay una sola metodología universal, la de ISO 27001 (PDCA,
+    sección 02 del documento de arquitectura) no encaja con el modelo de
+    cumplimiento regulatorio de plazos fijos de CNO-1960 — ver
+    ``app/wizard/seeds/cno_route.py``.
     """
 
     __tablename__ = "wizard_phases"
+    __table_args__ = (
+        UniqueConstraint("framework_id", "number", name="uq_wizard_phase_framework_number"),
+        UniqueConstraint("framework_id", "code", name="uq_wizard_phase_framework_code"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
-    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    framework_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("frameworks.id", ondelete="CASCADE"), nullable=False
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    code: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     objective: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    framework: Mapped["Framework"] = relationship()  # noqa: F821 - registrado por app.frameworks.models
     templates: Mapped[list["WizardTaskTemplate"]] = relationship(
         back_populates="phase", cascade="all, delete-orphan", order_by="WizardTaskTemplate.order_index"
     )

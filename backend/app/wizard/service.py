@@ -24,21 +24,26 @@ class InvalidTransition(WizardError):
     pass
 
 
-def list_phases(db: Session) -> list[WizardPhase]:
+def list_phases(db: Session, framework_id: uuid.UUID | None = None) -> list[WizardPhase]:
     stmt = select(WizardPhase).options(selectinload(WizardPhase.templates)).order_by(WizardPhase.number)
+    if framework_id is not None:
+        stmt = stmt.where(WizardPhase.framework_id == framework_id)
     return list(db.scalars(stmt))
 
 
-def instantiate(db: Session, tenant_id: str) -> int:
-    """Crea, para este tenant, una TenantWizardTask por cada plantilla que aún no tenga.
+def instantiate(db: Session, tenant_id: str, framework_id: uuid.UUID) -> int:
+    """Crea, para este tenant, una TenantWizardTask por cada plantilla de SU ruta que aún no tenga.
 
-    Idempotente: llamarlo de nuevo (p.ej. después de agregar plantillas
-    nuevas al checklist global) solo agrega lo que falte.
+    Cada tenant tiene una sola norma (``framework_id``), así que solo se
+    instancian las fases de esa ruta (Ruta SGSI o Ruta CNO) — nunca las de
+    la otra. Idempotente: llamarlo de nuevo (p.ej. después de agregar
+    plantillas nuevas al checklist) solo agrega lo que falte.
     """
     templates = list(
         db.scalars(
             select(WizardTaskTemplate)
             .join(WizardPhase)
+            .where(WizardPhase.framework_id == framework_id)
             .order_by(WizardPhase.number, WizardTaskTemplate.order_index)
         )
     )
@@ -86,8 +91,14 @@ def _tasks_by_phase(db: Session, tenant_id: str) -> dict[uuid.UUID, list[TenantW
     return by_phase
 
 
-def get_progress(db: Session, tenant_id: str) -> list[dict]:
-    phases = list(db.scalars(select(WizardPhase).order_by(WizardPhase.number)))
+def get_progress(db: Session, tenant_id: str, framework_id: uuid.UUID) -> list[dict]:
+    phases = list(
+        db.scalars(
+            select(WizardPhase)
+            .where(WizardPhase.framework_id == framework_id)
+            .order_by(WizardPhase.number)
+        )
+    )
     by_phase = _tasks_by_phase(db, tenant_id)
 
     progress = []
@@ -119,7 +130,10 @@ def get_progress(db: Session, tenant_id: str) -> list[dict]:
 
 
 def _is_phase_unlocked(db: Session, tenant_id: str, phase_id: uuid.UUID) -> bool:
-    for entry in get_progress(db, tenant_id):
+    phase = db.get(WizardPhase, phase_id)
+    if phase is None:
+        raise PhaseNotFound(str(phase_id))
+    for entry in get_progress(db, tenant_id, phase.framework_id):
         if entry["phase"].id == phase_id:
             return entry["status"] in ("current", "complete")
     raise PhaseNotFound(str(phase_id))

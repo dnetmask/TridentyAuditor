@@ -55,6 +55,12 @@ export function WizardPage() {
 
   const started = progress !== null && progress.some((p) => p.total_count > 0);
   const selectedPhase = progress?.find((p) => p.phase.id === selectedPhaseId) ?? null;
+  const isCno = session!.frameworkCode === "CNO-1960";
+  const routeLabel = isCno ? "Ruta CNO" : "Ruta SGSI";
+  const routeDescription = isCno
+    ? "las fases de puesta en marcha de la Guía de Ciberseguridad del CNO (Acuerdo 1960)"
+    : "las 8 fases del ciclo de mejora continua";
+  const cycleLabel = isCno ? "ciclo de cumplimiento CNO" : "ciclo SGSI";
 
   const approvedDocuments = useMemo(
     () => documents.filter((d) => d.versions.some((v) => v.status === "approved")),
@@ -65,11 +71,10 @@ export function WizardPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Asistente paso a paso</h1>
+          <h1>{routeLabel}</h1>
           <p>
-            MOD·WZD — las 8 fases del ciclo de mejora continua convertidas en tareas con
-            dueño, fecha y evidencia. Una fase no se desbloquea hasta que la anterior
-            queda completa.
+            MOD·WZD — {routeDescription} convertidas en tareas con dueño, fecha y evidencia.
+            Una fase no se desbloquea hasta que la anterior queda completa.
           </p>
         </div>
       </div>
@@ -80,14 +85,14 @@ export function WizardPage() {
         <div className="card empty-state">Cargando…</div>
       ) : !started ? (
         <div className="card empty-state">
-          <p>Este tenant todavía no ha iniciado su ciclo SGSI.</p>
+          <p>Este tenant todavía no ha iniciado su {cycleLabel}.</p>
           {canInstantiate ? (
             <button
               className="btn btn-primary"
               disabled={busy}
               onClick={() => run(() => api.wizardInstantiate(token))}
             >
-              Comenzar ciclo SGSI
+              Comenzar {cycleLabel}
             </button>
           ) : (
             <p className="muted">Pídele al Admin del tenant que lo inicie.</p>

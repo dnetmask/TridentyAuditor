@@ -77,12 +77,11 @@ no requiere migración de esquema. Sí aparecerá automáticamente como una
 tercera opción en el selector de norma del panel de Super Admin en cuanto
 `GET /api/v1/frameworks` lo liste.
 
-## Pendiente
+## Ruta paso a paso por norma (MOD·WZD)
 
-- El Asistente paso a paso (MOD·WZD, "Ruta SGSI") sigue escrito para la
-  metodología de implementación de un SGSI ISO 27001 (diagnóstico → contexto
-  → liderazgo → riesgos → SoA → implementación → auditoría interna →
-  revisión y certificación) — no encaja con el modelo de cumplimiento
-  regulatorio de plazos fijos de CNO-1960. Sigue visible tal cual para un
-  tenant CNO-1960 aunque su texto no le calce; diseñarle una ruta propia es
-  trabajo aparte.
+El Asistente paso a paso también sigue el patrón de "una ruta por norma": un
+tenant ISO ve la Ruta SGSI (8 fases, metodología de implementación de un
+SGSI) y un tenant CNO-1960 ve la Ruta CNO (10 fases, una por numeral del
+Acuerdo 1960, orientada a la primera puesta en marcha de una obligación ya
+vigente en vez de un proyecto desde cero). Ver
+[mod-wzd.md](mod-wzd.md).

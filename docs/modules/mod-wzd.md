@@ -2,21 +2,37 @@
 
 **Fase:** 1 · **Estado:** ✅ Implementado (`backend/app/wizard`, `frontend/src/pages/WizardPage.tsx`)
 
-Convierte la metodología de 8 fases (diagnóstico → contexto → liderazgo →
-riesgos → SoA → implementación → auditoría interna → revisión y
-certificación) en tareas asignadas, con dueño, fecha y evidencia requerida
-por fase — ver sección 02 del documento de arquitectura.
+Convierte la ruta de puesta en marcha de la norma del tenant en tareas
+asignadas, con dueño, fecha y evidencia requerida por fase. Cada norma trae
+su propia ruta — no hay una sola metodología universal (ver "Una norma por
+tenant" en [frameworks-engine.md](frameworks-engine.md)):
+
+- **Ruta SGSI** (ISO/IEC 27001:2022, `app/wizard/seeds/methodology.py`): 8
+  fases de un proyecto de implementación desde cero (diagnóstico → contexto
+  → liderazgo → riesgos → SoA → implementación → auditoría interna →
+  revisión y certificación) — ver sección 02 del documento de arquitectura.
+- **Ruta CNO** (CNO-1960, `app/wizard/seeds/cno_route.py`): 10 fases, una
+  por cada numeral del Anexo 1 del Acuerdo 1960 (mismo orden que sus
+  dominios en Marco normativo/SoA). A diferencia de ISO, CNO-1960 no es un
+  proyecto de implementación desde cero sino una obligación regulatoria ya
+  vigente con controles de cumplimiento periódico — así que la Ruta CNO no
+  repite los 41 controles uno a uno (eso ya vive en MOD·SOA con su propia
+  guía de evidencia), sino que agrupa la primera puesta en marcha de cada
+  numeral en 2-4 tareas de alto nivel, nombrando el entregable más relevante
+  y remitiendo a MOD·SOA para el resto del detalle.
 
 ## Modelo
 
 - **WizardPhase** / **WizardTaskTemplate**: checklist de referencia global
-  (igual patrón que el motor de frameworks — dato, no esquema). El seed
-  (`app/wizard/seeds/methodology.py`) carga las 8 fases con 3-4 tareas cada
-  una, basadas en práctica estándar de implementación ISO 27001.
+  (igual patrón que el motor de frameworks — dato, no esquema). Cada fase
+  trae un `framework_id` obligatorio: pertenece a una sola ruta, con su
+  propia numeración (la Ruta SGSI y la Ruta CNO ambas empiezan en la fase
+  1) — unicidad compuesta `(framework_id, number)` y `(framework_id, code)`.
 - **TenantWizardTask**: la instancia editable de cada tenant, con RLS. Se
   crea vía `POST /api/v1/wizard/instantiate` (idempotente — solo agrega lo
-  que falte si el checklist global crece). Un tenant también puede agregar
-  tareas propias fuera del checklist (`template_id` nulo).
+  que falte, y solo de la ruta de SU norma, nunca de la otra). Un tenant
+  también puede agregar tareas propias fuera del checklist (`template_id`
+  nulo).
 
 ## Reglas de negocio
 
@@ -41,13 +57,15 @@ por fase — ver sección 02 del documento de arquitectura.
 
 ## Endpoints
 
-Todos (salvo `/phases`) requieren `Authorization: Bearer <jwt>`.
+Todos (salvo `/phases`) requieren `Authorization: Bearer <jwt>` de un
+tenant, y operan sobre la ruta de SU norma — el backend la resuelve del
+tenant en sesión, el cliente nunca la elige.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/v1/wizard/phases` | Checklist de referencia (global, sin auth) |
-| POST | `/api/v1/wizard/instantiate` | Crea las tareas del tenant a partir del checklist |
-| GET | `/api/v1/wizard/progress` | Las 8 fases con sus tareas y estado (`locked`/`current`/`complete`) |
+| GET | `/api/v1/wizard/phases` | Checklist de referencia (global, sin auth) — `?framework_code=` filtra a una sola ruta, sin el parámetro trae ambas |
+| POST | `/api/v1/wizard/instantiate` | Crea las tareas del tenant a partir del checklist de su norma |
+| GET | `/api/v1/wizard/progress` | Las fases de la ruta del tenant con sus tareas y estado (`locked`/`current`/`complete`) |
 | POST | `/api/v1/wizard/tasks` | Agrega una tarea custom a una fase |
 | PATCH | `/api/v1/wizard/tasks/{id}` | Asigna dueño, fecha o evidencia (solo si no está `done`) |
 | POST | `/api/v1/wizard/tasks/{id}/complete` | Cierra la tarea (valida evidencia + fase desbloqueada) |
@@ -55,9 +73,14 @@ Todos (salvo `/phases`) requieren `Authorization: Bearer <jwt>`.
 
 ## Pendiente
 
-- El ciclo de mejora continua (cerrar la fase 8 y volver a abrir la fase 1
-  como una nueva vuelta) no está implementado — hoy el recorrido es lineal.
+- El ciclo de mejora continua (cerrar la última fase y volver a abrir la
+  fase 1 como una nueva vuelta) no está implementado — hoy el recorrido es
+  lineal en ambas rutas.
 - Sin recordatorios/notificaciones por fecha de vencimiento (depende de
   RabbitMQ/NATS, sección 05 — todavía no integrado).
-- La fase 8 (Revisión y certificación) no tiene módulo propio de
-  certificación; sus tareas son genéricas.
+- La fase 8 de la Ruta SGSI (Revisión y certificación) no tiene módulo
+  propio de certificación; sus tareas son genéricas. La Ruta CNO no tiene
+  un equivalente — CNO-1960 no se certifica, se reporta al CNO.
+- Cargar NIST CSF 2.0 (Fase 2) también implicará diseñarle su propia ruta,
+  siguiendo el mismo patrón (`framework_id` + seed propio) que
+  `methodology.py`/`cno_route.py`.

@@ -148,6 +148,43 @@ def test_wizard_progress_is_isolated_per_tenant(client, make_tenant, auth_header
     assert progress_b[0]["total_count"] == 0  # tenant B never instantiated its own checklist
 
 
+def test_cno_tenant_gets_the_cno_route_not_the_iso_one(client, make_tenant, auth_headers):
+    tenant = make_tenant(framework_code="CNO-1960")
+    headers = auth_headers(tenant["id"])
+
+    first = _instantiate(client, headers)
+    assert first["created"] > 0
+
+    progress = _progress(client, headers)
+    assert len(progress) == 10
+    assert [p["phase"]["number"] for p in progress] == list(range(1, 11))
+    assert progress[0]["phase"]["code"] == "cumplimiento"
+    assert progress[0]["status"] == "current"
+    assert all(p["status"] == "locked" for p in progress[1:])
+    assert all(p["total_count"] > 0 for p in progress)
+
+
+def test_wizard_phases_endpoint_filters_by_framework_code(client):
+    resp = client.get("/api/v1/wizard/phases")
+    assert resp.status_code == 200
+    all_phases = resp.json()
+    assert len(all_phases) == 18  # 8 de la Ruta SGSI + 10 de la Ruta CNO
+
+    resp = client.get("/api/v1/wizard/phases", params={"framework_code": "CNO-1960"})
+    assert resp.status_code == 200
+    cno_phases = resp.json()
+    assert len(cno_phases) == 10
+    assert [p["number"] for p in cno_phases] == list(range(1, 11))
+
+    resp = client.get("/api/v1/wizard/phases", params={"framework_code": "ISO27001:2022"})
+    assert resp.status_code == 200
+    iso_phases = resp.json()
+    assert len(iso_phases) == 8
+
+    resp = client.get("/api/v1/wizard/phases", params={"framework_code": "no-existe"})
+    assert resp.status_code == 404
+
+
 def test_custom_task_can_be_added_to_a_phase(client, make_tenant, auth_headers):
     tenant = make_tenant()
     headers = auth_headers(tenant["id"])

@@ -23,7 +23,7 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Multitenencia (tier pooled, RLS) | — | ✅ Esqueleto |
 | Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
 | Control documental | MOD·DOC | ✅ Funcional (CRUD + versionado + aprobación + subida/descarga real de archivos) |
-| Asistente paso a paso | MOD·WZD | ✅ Funcional (8 fases, evidencia obligatoria, desbloqueo por fase) |
+| Asistente paso a paso | MOD·WZD | ✅ Funcional (Ruta SGSI o Ruta CNO según la norma del tenant, evidencia obligatoria, desbloqueo por fase) |
 | Gestión de riesgos | MOD·RSK | ✅ Funcional (activos, matriz probabilidad×impacto, tratamiento, residual) |
 | SoA · Anexo A | MOD·SOA | ✅ Funcional (controles de la norma del tenant, exclusión con justificación, dueño) |
 | Indicador de cumplimiento | — | ✅ % de evidencia aprobada (SoA + asistente), visible en la barra superior |
@@ -31,7 +31,7 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Indicadores y revisión | MOD·KPI | ⏳ Fase 1, pendiente |
 | Capacitación y cultura | MOD·TRN | ⏳ Fase 1, pendiente |
 | Módulo NIST CSF 2.0 | MOD·NIST | ⏳ Fase 2 |
-| Frontend (React) | — | ✅ Ruta SGSI, Documentos, Marco normativo, SoA, Riesgos, Auditoría |
+| Frontend (React) | — | ✅ Ruta SGSI/Ruta CNO, Documentos, Marco normativo, SoA, Riesgos, Auditoría |
 
 Ver [`docs/modules/`](docs/modules) para el detalle de cada módulo.
 

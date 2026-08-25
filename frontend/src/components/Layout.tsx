@@ -47,10 +47,15 @@ export function Layout() {
     });
   }
 
+  // El asistente paso a paso trae una ruta por norma (Ruta SGSI para ISO
+  // 27001, Ruta CNO para CNO-1960 — ver docs/modules/mod-wzd.md); la etiqueta
+  // del menú sigue la norma del tenant en sesión.
+  const routeLabel = session?.frameworkCode === "CNO-1960" ? "Ruta CNO" : "Ruta SGSI";
+
   const navItems: NavItem[] = isSuperAdmin
     ? [{ to: "/admin/tenants", label: "Tenants", icon: <IconBuilding /> }]
     : [
-        { to: "/ruta-sgsi", label: "Ruta SGSI", icon: <IconRoute /> },
+        { to: "/ruta-sgsi", label: routeLabel, icon: <IconRoute /> },
         { to: "/riesgos", label: "Riesgos", icon: <IconRisk /> },
         { to: "/soa", label: "SoA", icon: <IconChecklist /> },
         { to: "/auditoria", label: "Auditoría", icon: <IconAudit /> },

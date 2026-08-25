@@ -23,6 +23,7 @@ from app.risk.router import router as risk_router
 from app.soa.router import router as soa_router
 from app.tenants.router import router as tenants_router
 from app.wizard.router import router as wizard_router
+from app.wizard.seeds.cno_route import seed_cno_route
 from app.wizard.seeds.methodology import seed_wizard_phases
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -54,6 +55,7 @@ async def lifespan(app: FastAPI):
         seed_iso27001(db)
         seed_cno1960(db)
         seed_wizard_phases(db)
+        seed_cno_route(db)
         bootstrap_super_admin(
             db,
             email=settings.super_admin_email,
