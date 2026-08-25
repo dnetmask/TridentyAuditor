@@ -78,6 +78,17 @@ def get_tenant_name(db: Session, tenant_id: uuid.UUID | None) -> str | None:
     return tenant.name if tenant else None
 
 
+def get_tenant_framework_code(db: Session, tenant_id: uuid.UUID | None) -> str | None:
+    """El código de la norma del tenant (ej. ``ISO27001:2022`` o ``CNO-1960``),
+    resuelto una vez en el login para que el frontend nunca tenga que
+    adivinarlo o dejarlo escrito a mano — ver Fase 0 de la ruta de MOD·DOC.
+    """
+    if tenant_id is None:
+        return None
+    tenant = db.get(Tenant, tenant_id)
+    return tenant.framework.code if tenant else None
+
+
 def _assert_can_manage(creator_role: str, creator_tenant_id: str | None, target_role: UserRole, target_tenant_id: uuid.UUID | None) -> uuid.UUID | None:
     """Devuelve el tenant_id efectivo a usar, o levanta Forbidden/InvalidUser."""
     if creator_role == UserRole.SUPER_ADMIN.value:

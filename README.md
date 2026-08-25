@@ -3,9 +3,12 @@
 Plataforma GRC multitenant, nativa de contenedores, para gestión documental y
 seguimiento paso a paso de un Sistema de Gestión de Seguridad de la Información.
 
-Un solo motor de frameworks que hoy habla ISO/IEC 27001:2022 y en la Fase 2
-habla NIST CSF 2.0, empaquetado en contenedores OCI para desplegarse en
-cualquier nube o en el centro de datos del cliente.
+Un solo motor de frameworks que hoy habla ISO/IEC 27001:2022 y la Guía de
+Ciberseguridad del Consejo Nacional de Operación (Acuerdo 1960, sector
+eléctrico colombiano) — cada tenant elige una sola norma al crearse, ya que
+su estructura de dominios/controles no es intercambiable entre normas — y en
+la Fase 2 sumará NIST CSF 2.0, empaquetado en contenedores OCI para
+desplegarse en cualquier nube o en el centro de datos del cliente.
 
 > Ver [`docs/architecture/tridentyauditor-arquitectura.md`](docs/architecture/tridentyauditor-arquitectura.md)
 > para el documento de arquitectura completo (V0.1, borrador de discusión).
@@ -16,13 +19,13 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 
 | Módulo | Código | Estado |
 |---|---|---|
-| Motor de frameworks | — | ✅ Esqueleto + seed ISO/IEC 27001:2022 |
+| Motor de frameworks | — | ✅ ISO/IEC 27001:2022 + Guía de Ciberseguridad CNO (Acuerdo 1960) — una norma por tenant |
 | Multitenencia (tier pooled, RLS) | — | ✅ Esqueleto |
 | Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
 | Control documental | MOD·DOC | ✅ Funcional (CRUD + versionado + aprobación + subida/descarga real de archivos) |
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (8 fases, evidencia obligatoria, desbloqueo por fase) |
 | Gestión de riesgos | MOD·RSK | ✅ Funcional (activos, matriz probabilidad×impacto, tratamiento, residual) |
-| SoA · Anexo A | MOD·SOA | ✅ Funcional (93 controles, exclusión con justificación, dueño) |
+| SoA · Anexo A | MOD·SOA | ✅ Funcional (controles de la norma del tenant, exclusión con justificación, dueño) |
 | Indicador de cumplimiento | — | ✅ % de evidencia aprobada (SoA + asistente), visible en la barra superior |
 | Auditoría interna | MOD·AUD | ✅ Funcional (programa de auditoría, hallazgos clasificados, CAPA con cierre verificable) |
 | Indicadores y revisión | MOD·KPI | ⏳ Fase 1, pendiente |

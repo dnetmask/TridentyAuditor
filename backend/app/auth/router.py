@@ -41,6 +41,7 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
         role=user.role,
         tenant_id=user.tenant_id,
         tenant_name=service.get_tenant_name(db, user.tenant_id),
+        framework_code=service.get_tenant_framework_code(db, user.tenant_id),
     )
 
 

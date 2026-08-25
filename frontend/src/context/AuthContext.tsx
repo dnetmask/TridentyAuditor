@@ -4,6 +4,7 @@ import type { UserRole } from "../api/types";
 export interface Session {
   tenantId: string | null;
   tenantName: string | null;
+  frameworkCode: string | null;
   userId: string;
   email: string;
   fullName: string;

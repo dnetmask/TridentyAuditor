@@ -2,11 +2,12 @@
 
 **Fase:** 1 · **Estado:** ✅ Implementado (`backend/app/soa`, `frontend/src/pages/SoaPage.tsx`)
 
-Declaración de Aplicabilidad sobre los 93 controles de ISO/IEC 27001:2022 en
-4 temas, con justificación de exclusión y dueño por control. Se construye
-como una capa de aplicabilidad por tenant sobre el motor de frameworks (los
-controles en sí son datos globales, no por tenant — ver
-[frameworks-engine.md](frameworks-engine.md)).
+Declaración de Aplicabilidad sobre los controles de la norma del tenant
+(ISO/IEC 27001:2022 o la Guía de Ciberseguridad del CNO — ver "Una norma por
+tenant" en [frameworks-engine.md](frameworks-engine.md)), con justificación
+de exclusión y dueño por control. Se construye como una capa de
+aplicabilidad por tenant sobre el motor de frameworks (los controles en sí
+son datos globales, no por tenant).
 
 ## Modelo
 
@@ -53,9 +54,6 @@ Todos requieren `Authorization: Bearer <jwt>` de un tenant.
 
 ## Pendiente
 
-- Solo cubre ISO/IEC 27001:2022 (`framework_code` fijo en el instantiate);
-  cuando se agregue NIST CSF 2.0 habrá que decidir si el SoA es por
-  framework o unificado.
 - Sin exportación a PDF/Excel del documento SoA formal — hoy es una tabla
   viva, no un artefacto descargable.
 - `evidence_document_id` existe en el modelo pero la UI todavía no lo

@@ -17,6 +17,7 @@ from app.core.database import SessionLocal
 from app.documents.router import router as documents_router
 from app.frameworks.router import controls_router, domains_router
 from app.frameworks.router import router as frameworks_router
+from app.frameworks.seeds.cno1960 import seed_cno1960
 from app.frameworks.seeds.iso27001_2022 import seed_iso27001
 from app.risk.router import router as risk_router
 from app.soa.router import router as soa_router
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_iso27001(db)
+        seed_cno1960(db)
         seed_wizard_phases(db)
         bootstrap_super_admin(
             db,

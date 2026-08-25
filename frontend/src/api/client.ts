@@ -112,8 +112,12 @@ export const api = {
     }),
 
   // --- Super Admin: tenants ---
-  createTenant: (token: string, name: string, slug: string) =>
-    request<import("./types").Tenant>("/api/v1/tenants", { method: "POST", token, body: { name, slug } }),
+  createTenant: (token: string, name: string, slug: string, frameworkId: string) =>
+    request<import("./types").Tenant>("/api/v1/tenants", {
+      method: "POST",
+      token,
+      body: { name, slug, framework_id: frameworkId },
+    }),
 
   listTenants: (token: string) => request<import("./types").Tenant[]>("/api/v1/tenants", { token }),
 
@@ -143,6 +147,8 @@ export const api = {
     request<import("./types").ComplianceOverview>("/api/v1/compliance/overview", { token }),
 
   // --- motor de frameworks ---
+  listFrameworks: () => request<import("./types").Framework[]>("/api/v1/frameworks"),
+
   getFramework: (code: string) =>
     request<import("./types").FrameworkDetail>(`/api/v1/frameworks/${encodeURIComponent(code)}`),
 

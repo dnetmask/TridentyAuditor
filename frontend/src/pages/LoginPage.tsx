@@ -21,6 +21,7 @@ export function LoginPage() {
       login({
         tenantId: res.tenant_id,
         tenantName: res.tenant_name,
+        frameworkCode: res.framework_code,
         userId: res.user_id,
         email: res.email,
         fullName: res.full_name,

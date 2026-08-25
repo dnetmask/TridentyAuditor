@@ -19,6 +19,7 @@ class TokenResponse(BaseModel):
     role: UserRole
     tenant_id: uuid.UUID | None
     tenant_name: str | None
+    framework_code: str | None
 
 
 class MeRead(BaseModel):

@@ -21,6 +21,7 @@ export function SoaPage() {
   const [summary, setSummary] = useState<SoaSummary | null>(null);
   const [directory, setDirectory] = useState<DirectoryUser[]>([]);
   const [documents, setDocuments] = useState<DocumentDetail[]>([]);
+  const [frameworkName, setFrameworkName] = useState<string | null>(null);
   const [openDomain, setOpenDomain] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +36,7 @@ export function SoaPage() {
     reload();
     api.directory(token).then(setDirectory).catch(() => {});
     api.listDocuments(token).then(setDocuments).catch(() => {});
+    api.getFramework(session!.frameworkCode!).then((fw) => setFrameworkName(fw.name)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -75,8 +77,9 @@ export function SoaPage() {
         <div>
           <h1>Declaración de Aplicabilidad (SoA)</h1>
           <p>
-            MOD·SOA — los 93 controles del Anexo A con su aplicabilidad, justificación de
-            exclusión, estado de implementación y dueño. Datos estructurados, no un PDF.
+            MOD·SOA — los controles de {frameworkName ?? "tu norma"} con su aplicabilidad,
+            justificación de exclusión, estado de implementación y dueño. Datos estructurados, no
+            un PDF.
           </p>
         </div>
       </div>
@@ -101,7 +104,7 @@ export function SoaPage() {
           <p>Este tenant todavía no tiene una Declaración de Aplicabilidad.</p>
           {canInstantiate ? (
             <button className="btn btn-primary" disabled={busy} onClick={() => run(() => api.soaInstantiate(token))}>
-              Comenzar SoA sobre ISO/IEC 27001:2022
+              Comenzar SoA sobre {frameworkName ?? "tu norma"}
             </button>
           ) : (
             <p className="muted">Pídele al Admin del tenant que la inicie.</p>

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import type { Tenant } from "../api/types";
+import type { Framework, Tenant } from "../api/types";
 
 export function AdminTenantsPage() {
   const { session } = useAuth();
@@ -54,6 +54,7 @@ export function AdminTenantsPage() {
               <tr>
                 <th>Nombre</th>
                 <th>Slug</th>
+                <th>Norma</th>
                 <th>Aislamiento</th>
                 <th>Creado</th>
                 <th></th>
@@ -64,6 +65,7 @@ export function AdminTenantsPage() {
                 <tr key={t.id}>
                   <td>{t.name}</td>
                   <td><code>{t.slug}</code></td>
+                  <td><span className="tier-chip" title={t.framework.name}>{t.framework.code}</span></td>
                   <td><span className="tier-chip">{t.isolation_tier}</span></td>
                   <td>{new Date(t.created_at).toLocaleDateString()}</td>
                   <td>
@@ -113,15 +115,24 @@ function CreateTenantModal({
 }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [frameworks, setFrameworks] = useState<Framework[]>([]);
+  const [frameworkId, setFrameworkId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api.listFrameworks().then((list) => {
+      setFrameworks(list);
+      if (list.length > 0) setFrameworkId((current) => current || list[0].id);
+    });
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const tenant = await api.createTenant(token, name, slug);
+      const tenant = await api.createTenant(token, name, slug, frameworkId);
       onCreated(tenant);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo crear el tenant");
@@ -150,6 +161,18 @@ function CreateTenantModal({
               onChange={(e) => setSlug(e.target.value)}
               placeholder="acme"
             />
+          </div>
+          <div className="field">
+            <label htmlFor="t-framework">Norma o estándar</label>
+            <select id="t-framework" required value={frameworkId} onChange={(e) => setFrameworkId(e.target.value)}>
+              {frameworks.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+            <div className="evidence-hint" style={{ marginTop: "0.3rem" }}>
+              Un tenant, una norma — si esta organización necesita más de una, se crea un tenant
+              aparte por cada una (sus dominios y controles no son compatibles entre sí).
+            </div>
           </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>

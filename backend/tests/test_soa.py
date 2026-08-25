@@ -21,6 +21,21 @@ def test_instantiate_creates_93_entries_and_is_idempotent(client, make_tenant, a
     assert all(e["control"]["evidence_guidance"] for e in entries)
 
 
+def test_instantiate_uses_the_tenant_own_framework(client, make_tenant, auth_headers):
+    """Fase 0: un tenant CNO-1960 instancia sus 41 controles, no los 93 de
+    ISO 27001 — confirma que /soa/instantiate ya no usa el default fijo."""
+    tenant = make_tenant(framework_code="CNO-1960")
+    headers = auth_headers(tenant["id"])
+
+    resp = client.post("/api/v1/soa/instantiate", headers=headers)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["created"] == 41
+
+    entries = client.get("/api/v1/soa/entries", headers=headers).json()
+    assert len(entries) == 41
+    assert entries[0]["control"]["domain"]["code"] == "3"
+
+
 def test_excluding_control_requires_justification(client, make_tenant, auth_headers):
     tenant = make_tenant()
     headers = auth_headers(tenant["id"])

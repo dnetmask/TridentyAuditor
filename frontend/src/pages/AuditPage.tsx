@@ -80,7 +80,7 @@ export function AuditPage() {
     api.directory(token).then(setDirectory).catch(() => {});
     api.listDocuments(token).then(setDocuments).catch(() => {});
     api
-      .getFramework("ISO27001:2022")
+      .getFramework(session!.frameworkCode!)
       .then((fw) => {
         setDomains(fw.domains.map((d) => ({ id: d.id, code: d.code, name: d.name })));
         setControls(fw.domains.flatMap((d) => d.controls.map((c) => ({ id: c.id, code: c.code, name: c.name }))));

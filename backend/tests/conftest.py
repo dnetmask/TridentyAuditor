@@ -90,10 +90,14 @@ def super_admin_headers(token_factory):
 
 @pytest.fixture()
 def make_tenant(client, super_admin_headers):
-    def _make(name: str = "Tenant de prueba", slug: str | None = None):
+    def _make(name: str = "Tenant de prueba", slug: str | None = None, framework_code: str = "ISO27001:2022"):
         slug = slug or f"tenant-{uuid.uuid4().hex[:8]}"
+        frameworks = client.get("/api/v1/frameworks").json()
+        framework_id = next(f["id"] for f in frameworks if f["code"] == framework_code)
         resp = client.post(
-            "/api/v1/tenants", json={"name": name, "slug": slug}, headers=super_admin_headers
+            "/api/v1/tenants",
+            json={"name": name, "slug": slug, "framework_id": framework_id},
+            headers=super_admin_headers,
         )
         assert resp.status_code == 201, resp.text
         return resp.json()

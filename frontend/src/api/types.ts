@@ -2,11 +2,19 @@ export type UserRole = "super_admin" | "tenant_admin" | "internal_auditor" | "vi
 
 export type IsolationTier = "pooled" | "isolated";
 
+export interface Framework {
+  id: string;
+  code: string;
+  name: string;
+  version: string;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   slug: string;
   isolation_tier: IsolationTier;
+  framework: Framework;
   created_at: string;
 }
 
@@ -114,6 +122,7 @@ export interface LoginResponse {
   role: UserRole;
   tenant_id: string | null;
   tenant_name: string | null;
+  framework_code: string | null;
 }
 
 export interface User {

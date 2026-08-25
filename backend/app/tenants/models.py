@@ -2,10 +2,10 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -33,4 +33,16 @@ class Tenant(Base):
         nullable=False,
         default=IsolationTier.POOLED,
     )
+    # Un tenant, una norma — a diferencia de tenant_id en las tablas de MOD·DOC,
+    # esta FK sí es real: frameworks vive en el mismo plano sin RLS que
+    # tenants, así que no hay frontera de aislamiento que cruzar. Se elige una
+    # sola vez al crear el tenant (ver tenants/router.py); si una organización
+    # necesita dos normas (ej. ISO 27001 y la Guía de Ciberseguridad del CNO),
+    # son dos tenants — sus estructuras de dominios/controles no son
+    # compatibles entre sí.
+    framework_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("frameworks.id"), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    framework: Mapped["Framework"] = relationship()  # noqa: F821 - registrado por app.frameworks.models

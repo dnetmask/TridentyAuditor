@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
 from app.soa import schemas, service
 from app.soa.service import EntryNotFound, FrameworkNotFound, InvalidEntry
+from app.tenants.models import Tenant
 
 router = APIRouter(prefix="/api/v1/soa", tags=["soa (MOD·SOA)"])
 
@@ -17,8 +18,9 @@ def instantiate(
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(require_tenant_roles("tenant_admin")),
 ):
+    tenant = db.get(Tenant, principal.tenant_id)
     try:
-        created = service.instantiate(db, principal.tenant_id)
+        created = service.instantiate(db, principal.tenant_id, framework_code=tenant.framework.code)
     except FrameworkNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Framework no encontrado") from exc
     return schemas.InstantiateResult(created=created)

@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import type { Domain, FrameworkDetail } from "../api/types";
 
 export function FrameworksPage() {
+  const { session } = useAuth();
+  const frameworkCode = session!.frameworkCode!;
   const [framework, setFramework] = useState<FrameworkDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openDomain, setOpenDomain] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .getFramework("ISO27001:2022")
+      .getFramework(frameworkCode)
       .then(setFramework)
       .catch((err) => setError(err instanceof ApiError ? err.message : "No se pudo cargar el framework"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const totalControls = framework?.domains.reduce((sum, d) => sum + d.controls.length, 0) ?? 0;
