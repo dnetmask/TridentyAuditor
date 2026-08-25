@@ -6,7 +6,9 @@
 FROM node:22-slim AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm install
+# npm ci respeta el lockfile tal cual — un build reproducible es también un
+# control de cadena de suministro (Fase S1/Q).
+RUN npm ci
 COPY frontend/ ./
 # Mismo origen en runtime (esta imagen sirve la SPA y la API en el mismo
 # puerto, ver app/main.py::SPAStaticFiles), así que el cliente no necesita

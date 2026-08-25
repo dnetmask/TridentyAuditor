@@ -11,8 +11,27 @@ cuentas de verdad con contraseña con hash (bcrypt).
 
 `User` vive en el plano de control (como `Tenant`), sin RLS — un Super Admin
 no tiene `tenant_id`; los otros tres roles siempre pertenecen a un tenant.
-Un JWT (HS256, placeholder hasta Keycloak/OIDC en la Fase 2) lleva
-`sub`, `email`, `full_name`, `role` y, si aplica, `tenant_id`.
+
+## Sesiones (Fase S1)
+
+- **Access token corto** (JWT HS256, placeholder hasta Keycloak/OIDC en la
+  Fase 2): lleva solo `sub` + vigencia (`exp`, default 60 min, configurable
+  con `TRIDENTY_ACCESS_TOKEN_MINUTES`). Rol, tenant, email y estado activo
+  se **re-leen de la BD en cada request** — desactivar una cuenta o cambiar
+  un rol aplica de inmediato, sin esperar a que el token venza. Un token sin
+  `exp` (emitido antes de la Fase S1) se rechaza.
+- **Refresh token revocable** (`refresh_tokens`, solo se guarda su SHA-256):
+  vida de 14 días, **rotación en cada uso** — refrescar revoca el token
+  usado y emite uno nuevo. `POST /auth/refresh` renueva; `POST /auth/logout`
+  revoca. El frontend renueva en silencio cuando faltan &lt;10 min.
+- **Lockout de cuenta**: 5 logins fallidos bloquean la cuenta 15 minutos
+  (persistido en BD — aplica entre réplicas); un login exitoso resetea el
+  contador. Además hay un rate limit por IP en memoria sobre `/auth/login`
+  y una comparación bcrypt de costo constante cuando el email no existe
+  (sin fuga por timing).
+- **Arranque validado**: con `TRIDENTY_ENVIRONMENT` distinto de local, la
+  API aborta si el secreto JWT es el default del repo o el CORS no es
+  https — la configuración insegura no llega a servir ni un request.
 
 ## Roles
 
@@ -50,10 +69,13 @@ internos y Visualizadores.
 ## Pendiente
 
 - Sigue siendo HS256 con secreto compartido — la Fase 2 lo reemplaza por
-  OIDC contra Keycloak (login federado, MFA, tokens asimétricos).
-- Sin flujo de "olvidé mi contraseña" ni invitación por email — el Admin
-  que crea la cuenta comparte la contraseña temporal por fuera de la
-  plataforma.
+  OIDC contra Keycloak (login federado, MFA, tokens asimétricos). La Fase
+  S1 ya dejó los tokens con vigencia corta, revocación y re-verificación en
+  BD mientras tanto.
+- Política de contraseñas mínima (8+ caracteres, sin denylist) y sin flujo
+  de "olvidé mi contraseña" ni invitación por email — el Admin que crea la
+  cuenta comparte la contraseña temporal por fuera de la plataforma
+  (Fase S2).
 - El acceso de soporte de Netmask a un tenant específico (bajo autorización
   y auditado, sección 07) no está modelado todavía — hoy Super Admin
   simplemente no tiene acceso, sin mecanismo de excepción.

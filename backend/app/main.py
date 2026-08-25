@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.activity.router import router as activity_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.auth.service import bootstrap_super_admin
@@ -50,6 +51,9 @@ class SPAStaticFiles(StaticFiles):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Aborta el arranque si la configuración es insegura fuera de local
+    # (secreto JWT default, CORS sin https) — Fase S1.
+    settings.assert_production_ready()
     db = SessionLocal()
     try:
         seed_iso27001(db)
@@ -77,6 +81,50 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url=None,
 )
+
+_MAX_BODY_BYTES = settings.max_request_body_mb * 1024 * 1024
+
+# CSP para la SPA que la propia API sirve. script-src 'self' (el build de
+# Vite emite solo <script src>); /docs necesita el script inline que genera
+# get_swagger_ui_html, por eso lleva su propia variante. style-src permite
+# inline porque React aplica estilos vía atributo style.
+_CSP_APP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
+    "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+)
+_CSP_DOCS = _CSP_APP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    """Cabeceras de seguridad en toda respuesta + tope de tamaño de request.
+
+    El tope por Content-Length frena a los clientes honestos con cuerpos
+    gigantes antes de leerlos; los cuerpos chunked sin Content-Length los
+    cortan los endpoints de subida (lectura por chunks con límite) y el
+    ingress en producción.
+    """
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > _MAX_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"El cuerpo supera el máximo de {settings.max_request_body_mb} MB"},
+        )
+
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        _CSP_DOCS if request.url.path.startswith("/docs") else _CSP_APP
+    )
+    if not settings.is_local:
+        # Solo tiene sentido detrás de TLS — y fuera de local, TLS es requisito.
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -124,6 +172,7 @@ app.include_router(soa_router)
 app.include_router(risk_router)
 app.include_router(compliance_router)
 app.include_router(audit_router)
+app.include_router(activity_router)
 
 
 @app.get("/health", tags=["health"])

@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.activity.service import log_event
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
 from app.soa import schemas, service
 from app.soa.service import EntryNotFound, FrameworkNotFound, InvalidEntry
@@ -23,6 +24,14 @@ def instantiate(
         created = service.instantiate(db, principal.tenant_id, framework_code=tenant.framework.code)
     except FrameworkNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Framework no encontrado") from exc
+    log_event(
+        db,
+        action="soa.instantiated",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        detail=f"{created} entradas · norma {tenant.framework.code}",
+    )
     return schemas.InstantiateResult(created=created)
 
 

@@ -9,6 +9,18 @@
 # Primera cuenta Super Admin: definir TRIDENTY_SUPER_ADMIN_EMAIL/_PASSWORD
 # más abajo antes del primer arranque, o crearla a mano después con:
 #   docker compose exec api python scripts/create_super_admin.py admin@netmask.co --name "Nombre"
+#
+# Seguridad (Fase S1):
+# - La API se conecta como `tridenty_app` (rol sin SUPERUSER ni ownership →
+#   RLS real); solo el job de migraciones usa el rol dueño. Ver db-init/.
+# - Postgres NO publica su puerto al host: solo la API lo alcanza por la red
+#   interna de compose. Para inspeccionar la BD: `docker compose exec db psql -U tridenty tridentyauditor`.
+# - Las contraseñas de abajo son defaults de DESARROLLO; en cualquier
+#   servidor real, definir POSTGRES_PASSWORD / TRIDENTY_APP_DB_PASSWORD /
+#   TRIDENTY_JWT_SECRET en un .env que no se versione.
+# - Si el volumen tridenty_pgdata ya existía antes de la Fase S1, el rol
+#   tridenty_app no existe todavía: `docker compose down -v` para
+#   re-inicializar, o correr deploy/db-init/01-app-role.sh a mano.
 name: tridentyauditor
 
 services:
@@ -16,12 +28,12 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: tridenty
-      POSTGRES_PASSWORD: tridenty
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tridenty}
       POSTGRES_DB: tridentyauditor
-    ports:
-      - "5432:5432"
+      TRIDENTY_APP_DB_PASSWORD: ${TRIDENTY_APP_DB_PASSWORD:-tridenty_app}
     volumes:
       - tridenty_pgdata:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tridenty"]
       interval: 5s
@@ -34,7 +46,8 @@ services:
       context: ..
       dockerfile: backend/Dockerfile
     environment:
-      TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
+      # Rol DUEÑO de las tablas — solo migraciones.
+      TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:${POSTGRES_PASSWORD:-tridenty}@db:5432/tridentyauditor
     depends_on:
       db:
         condition: service_healthy
@@ -47,8 +60,9 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       TRIDENTY_ENVIRONMENT: local
-      TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor
-      TRIDENTY_JWT_SECRET: dev-secret-change-me
+      # Rol de APLICACIÓN — sin SUPERUSER ni ownership, sujeto a RLS.
+      TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty_app:${TRIDENTY_APP_DB_PASSWORD:-tridenty_app}@db:5432/tridentyauditor
+      TRIDENTY_JWT_SECRET: ${TRIDENTY_JWT_SECRET:-dev-secret-change-me}
       TRIDENTY_CORS_ORIGINS: http://localhost:5173
       # Opcional — ver comentario de cabecera. Vacías por defecto: sin
       # ambas, el arranque no crea ninguna cuenta y sigue el flujo manual.

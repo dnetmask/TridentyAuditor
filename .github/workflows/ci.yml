@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  backend-tests:
+  backend:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -28,6 +28,7 @@ jobs:
     env:
       TRIDENTY_DATABASE_URL: postgresql+psycopg2://tridenty:tridenty@localhost:5432/tridentyauditor_test
       TRIDENTY_JWT_SECRET: test-secret
+      TRIDENTY_LOGIN_RATE_LIMIT_PER_MINUTE: "0"
     steps:
       - uses: actions/checkout@v4
 
@@ -39,5 +40,156 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      - name: Run tests
-        run: pytest -v
+      - name: Lint (ruff)
+        run: ruff check app tests alembic scripts
+
+      - name: Migrations round-trip (upgrade → downgrade → upgrade)
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Run tests with coverage gate
+        run: pytest -v --cov=app --cov-report=term --cov-fail-under=90
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # tsc -b corre dentro del build — typecheck y build roto se detectan aquí.
+      - name: Build
+        run: npm run build
+
+  docker-smoke:
+    # La imagen multi-stage (frontend + API) no la compila nadie más en CI —
+    # este job la construye, la arranca contra un Postgres real y verifica
+    # /health y que / sirva la SPA.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f backend/Dockerfile -t tridentyauditor-api:ci .
+
+      - name: Start Postgres
+        run: |
+          docker network create smoke
+          docker run -d --name db --network smoke \
+            -e POSTGRES_USER=tridenty -e POSTGRES_PASSWORD=tridenty -e POSTGRES_DB=tridentyauditor \
+            postgres:16-alpine
+          for i in $(seq 1 30); do
+            docker exec db pg_isready -U tridenty && break
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: |
+          docker run --rm --network smoke \
+            -e TRIDENTY_DATABASE_URL=postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor \
+            tridentyauditor-api:ci alembic upgrade head
+
+      - name: Start API and smoke test
+        run: |
+          docker run -d --name api --network smoke -p 8000:8000 \
+            -e TRIDENTY_ENVIRONMENT=local \
+            -e TRIDENTY_DATABASE_URL=postgresql+psycopg2://tridenty:tridenty@db:5432/tridentyauditor \
+            tridentyauditor-api:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/health && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8000/health | grep -q '"ok"'
+          # La SPA se sirve en el mismo puerto: / debe devolver el index de React.
+          curl -fsS http://localhost:8000/ | grep -q 'id="root"'
+
+      - name: Show API logs on failure
+        if: failure()
+        run: docker logs api || true
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Audit backend dependencies (pip-audit)
+        working-directory: backend
+        run: |
+          pip install -e . pip-audit
+          pip-audit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Audit frontend dependencies (npm audit, prod deps, high+)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+
+  e2e:
+    # Flujos críticos reales contra el stack completo de compose (la misma
+    # imagen única API+SPA que se despliega), con Playwright.
+    runs-on: ubuntu-latest
+    env:
+      TRIDENTY_SUPER_ADMIN_EMAIL: admin@netmask.co
+      TRIDENTY_SUPER_ADMIN_PASSWORD: supersecret123
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack
+        working-directory: deploy
+        run: docker compose up -d --build
+
+      - name: Wait for API
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8001/health && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8001/health
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        working-directory: frontend
+        env:
+          BASE_URL: http://localhost:8001
+          E2E_SUPER_EMAIL: admin@netmask.co
+          E2E_SUPER_PASSWORD: supersecret123
+        run: npx playwright test
+
+      - name: Show stack logs on failure
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs --tail 200

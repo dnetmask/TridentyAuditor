@@ -21,6 +21,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "tridentyauditor.fullname" . }}-config
+            # Credenciales del rol dueño de las tablas — solo este job las ve.
             - secretRef:
-                name: {{ .Values.existingSecret }}
+                name: {{ .Values.migrationJob.existingSecret }}
 {{- end }}

@@ -1,13 +1,15 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.activity.service import client_ip, log_event
 from app.core.config import get_settings
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
 from app.documents import schemas, service
+from app.documents.filetypes import DisallowedFileType, validate_and_resolve_type
 from app.documents.service import DocumentNotFound, FileMissing, InvalidTransition, VersionNotFound
 
 settings = get_settings()
@@ -21,18 +23,34 @@ can_write = require_tenant_roles("tenant_admin", "internal_auditor")
 can_review = require_tenant_roles("tenant_admin")
 
 _MAX_FILE_BYTES = settings.documents_max_file_size_mb * 1024 * 1024
+_CHUNK_BYTES = 1024 * 1024
 
 
-async def _read_upload(file: UploadFile) -> bytes:
-    content = await file.read()
+async def _read_upload(file: UploadFile) -> tuple[bytes, str]:
+    """Lee el archivo por chunks (corta apenas se pasa del límite, en vez de
+    cargar un cuerpo arbitrario a memoria primero) y valida tipo + firma
+    binaria contra la allowlist. Devuelve (contenido, media type real)."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_CHUNK_BYTES)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > _MAX_FILE_BYTES:
+            raise HTTPException(
+                status.HTTP_413_CONTENT_TOO_LARGE,
+                f"El archivo supera el máximo permitido de {settings.documents_max_file_size_mb} MB",
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
     if not content:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "El archivo está vacío")
-    if len(content) > _MAX_FILE_BYTES:
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            f"El archivo supera el máximo permitido de {settings.documents_max_file_size_mb} MB",
-        )
-    return content
+    try:
+        media_type = validate_and_resolve_type(file.filename or "", content[:16])
+    except DisallowedFileType as exc:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, exc.message) from exc
+    return content, media_type
 
 
 @router.post("", response_model=schemas.DocumentDetailRead, status_code=status.HTTP_201_CREATED)
@@ -47,9 +65,9 @@ async def create_document(
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(can_write),
 ):
-    content = await _read_upload(file)
+    content, media_type = await _read_upload(file)
     try:
-        return service.create_document(
+        document = service.create_document(
             db,
             principal.tenant_id,
             code=code,
@@ -61,10 +79,21 @@ async def create_document(
             change_summary=change_summary,
             file_content=content,
             original_filename=file.filename or code,
-            content_type=file.content_type,
+            content_type=media_type,
         )
     except IntegrityError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, f"El código '{code}' ya existe") from exc
+    log_event(
+        db,
+        action="documents.created",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document.id,
+        detail=f"{code} · {title}",
+    )
+    return document
 
 
 @router.get("", response_model=list[schemas.DocumentDetailRead])
@@ -99,9 +128,9 @@ async def create_new_version(
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(can_write),
 ):
-    content = await _read_upload(file)
+    content, media_type = await _read_upload(file)
     try:
-        return service.create_new_version(
+        version = service.create_new_version(
             db,
             principal.tenant_id,
             document_id,
@@ -109,18 +138,30 @@ async def create_new_version(
             change_summary=change_summary,
             file_content=content,
             original_filename=file.filename or "documento",
-            content_type=file.content_type,
+            content_type=media_type,
         )
     except DocumentNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado") from exc
     except InvalidTransition as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    log_event(
+        db,
+        action="documents.version_created",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"versión {version.version_number}",
+    )
+    return version
 
 
 @router.get("/{document_id}/versions/{version_number}/file")
 def download_version_file(
     document_id: uuid.UUID,
     version_number: int,
+    request: Request,
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(decode_tenant_token),
 ):
@@ -133,6 +174,17 @@ def download_version_file(
             status.HTTP_404_NOT_FOUND,
             "Esta versión no tiene un archivo almacenado (registro anterior a la subida de archivos)",
         ) from exc
+    log_event(
+        db,
+        action="documents.downloaded",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"versión {version_number}",
+        ip=client_ip(request),
+    )
     return FileResponse(
         path,
         media_type=version.content_type or "application/octet-stream",
@@ -148,11 +200,22 @@ def submit_for_review(
     principal: TenantPrincipal = Depends(can_write),
 ):
     try:
-        return service.submit_for_review(db, principal.tenant_id, document_id, version_number)
+        version = service.submit_for_review(db, principal.tenant_id, document_id, version_number)
     except VersionNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Versión no encontrada") from exc
     except InvalidTransition as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    log_event(
+        db,
+        action="documents.submitted",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"versión {version_number}",
+    )
+    return version
 
 
 @router.post("/{document_id}/versions/{version_number}/reject", response_model=schemas.DocumentVersionRead)
@@ -163,11 +226,22 @@ def reject_version(
     principal: TenantPrincipal = Depends(can_review),
 ):
     try:
-        return service.reject_version(db, principal.tenant_id, document_id, version_number)
+        version = service.reject_version(db, principal.tenant_id, document_id, version_number)
     except VersionNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Versión no encontrada") from exc
     except InvalidTransition as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    log_event(
+        db,
+        action="documents.rejected",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"versión {version_number}",
+    )
+    return version
 
 
 @router.post("/{document_id}/versions/{version_number}/approve", response_model=schemas.DocumentVersionRead)
@@ -178,8 +252,21 @@ def approve_version(
     principal: TenantPrincipal = Depends(can_review),
 ):
     try:
-        return service.approve_version(db, principal.tenant_id, document_id, version_number, principal.email)
+        version = service.approve_version(
+            db, principal.tenant_id, document_id, version_number, principal.email
+        )
     except VersionNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Versión no encontrada") from exc
     except InvalidTransition as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    log_event(
+        db,
+        action="documents.approved",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"versión {version_number}",
+    )
+    return version

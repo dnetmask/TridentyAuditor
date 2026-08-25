@@ -14,6 +14,14 @@ interface RequestOptions {
   token?: string | null;
 }
 
+// Un 401 sobre un request que SÍ llevaba token significa sesión muerta
+// (vencida sin refresh, cuenta desactivada, rol revocado): se avisa al
+// AuthContext para cerrar sesión. No aplica a login/refresh, que no llevan
+// Bearer — un password equivocado no debe desloguear a nadie.
+function notifySessionExpired() {
+  window.dispatchEvent(new Event("tridenty:session-expired"));
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
@@ -32,6 +40,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     } catch {
       // response wasn't JSON — keep statusText
     }
+    if (res.status === 401 && options.token) notifySessionExpired();
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
   }
 
@@ -61,6 +70,7 @@ async function requestFormData<T>(
     } catch {
       // response wasn't JSON — keep statusText
     }
+    if (res.status === 401) notifySessionExpired();
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
   }
 
@@ -109,6 +119,18 @@ export const api = {
     request<import("./types").LoginResponse>("/api/v1/auth/login", {
       method: "POST",
       body: { email, password },
+    }),
+
+  refresh: (refreshToken: string) =>
+    request<import("./types").RefreshResponse>("/api/v1/auth/refresh", {
+      method: "POST",
+      body: { refresh_token: refreshToken },
+    }),
+
+  logoutServer: (refreshToken: string) =>
+    request<void>("/api/v1/auth/logout", {
+      method: "POST",
+      body: { refresh_token: refreshToken },
     }),
 
   // --- Super Admin: tenants ---

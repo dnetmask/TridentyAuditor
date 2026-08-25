@@ -206,7 +206,6 @@ def test_viewer_cannot_write_audit(client, make_tenant, auth_headers):
 
 def test_internal_auditor_can_manage_findings(client, make_tenant, auth_headers):
     tenant = make_tenant()
-    admin_headers = auth_headers(tenant["id"])
     auditor_headers = auth_headers(tenant["id"], role="internal_auditor")
 
     program_id = client.post(

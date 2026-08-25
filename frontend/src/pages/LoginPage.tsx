@@ -27,6 +27,8 @@ export function LoginPage() {
         fullName: res.full_name,
         role: res.role,
         token: res.access_token,
+        refreshToken: res.refresh_token,
+        expiresAt: Date.now() + res.expires_in * 1000,
       });
       navigate(res.role === "super_admin" ? "/admin/tenants" : "/ruta-sgsi");
     } catch (err) {

@@ -70,11 +70,20 @@ de texto vía `Form` + el archivo vía `File`), no JSON — es la única forma d
 adjuntar un binario en el mismo request. Límite de tamaño configurable con
 `TRIDENTY_DOCUMENTS_MAX_FILE_SIZE_MB` (25 MB por defecto).
 
+**Subida endurecida (Fase S1):** el archivo se lee por chunks (el límite
+corta antes de cargar un cuerpo gigante a memoria) y pasa por una allowlist
+de tipos (`app/documents/filetypes.py`): PDF, Office, imágenes y texto
+plano, con verificación de firma binaria (magic bytes) — un `.pdf` que no
+empieza con `%PDF` se rechaza con 415. El `content_type` que declara el
+navegador se ignora: el tipo servido en la descarga se deriva de la
+extensión validada. Todo el ciclo de vida (crear, enviar, aprobar, rechazar,
+descargar) queda en la [bitácora de auditoría](activity-log.md).
+
 ## Pendiente
 
 - Listas maestras y política de retención automatizada (hoy `retention_months`
-  se guarda pero no dispara ninguna acción).
+  se guarda pero no dispara ninguna acción) — Fase 5 de la ruta.
 - Migrar el binario de disco local a Object Storage S3-compatible con
-  política WORM (ver "Almacenamiento del binario" arriba).
-- Reglas de quién puede aprobar (hoy cualquier `role` autenticado puede;
-  falta el chequeo de rol Admin del tenant / Dueño de control de la sección 07).
+  política WORM (ver "Almacenamiento del binario" arriba) — Fase S2.
+- Aprobación multinivel (gerente de área + seguridad de la información) —
+  Fase 2 de la ruta. Hoy aprueba cualquier Admin del tenant (un solo paso).

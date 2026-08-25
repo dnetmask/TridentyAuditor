@@ -21,6 +21,7 @@ dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
     "httpx>=0.27",
+    "ruff>=0.5",
 ]
 
 [build-system]
@@ -32,3 +33,15 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Reglas de corrección (E/F) + orden de imports (I). Estilo puro se queda
+# fuera a propósito: el lint debe atrapar errores, no discutir formato.
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

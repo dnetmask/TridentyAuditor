@@ -18,8 +18,12 @@ ingress:
   enabled: false
   className: nginx
   host: tridentyauditor.example.com
+  # TLS activo por defecto (Fase S1): exponer la API sin cifrado significa
+  # credenciales y documentos de clientes en claro. El secret lo emite
+  # cert-manager o se provisiona a mano; deshabilitarlo solo tiene sentido
+  # si el TLS termina en un balanceador por delante del ingress.
   tls:
-    enabled: false
+    enabled: true
     secretName: tridentyauditor-tls
 
 resources:
@@ -34,12 +38,20 @@ env:
   environment: production
 
 # Referencia a un Secret ya existente en el clúster (Vault/External Secrets
-# Operator en producción — sección 05/06) con las claves:
-# database-url, jwt-secret
+# Operator en producción — sección 05/06). Las claves son nombres de
+# variable de entorno (envFrom): TRIDENTY_DATABASE_URL (rol de APLICACIÓN
+# tridenty_app — sin SUPERUSER ni ownership, para que el RLS aplique de
+# verdad; ver deploy/db-init/01-app-role.sh) y TRIDENTY_JWT_SECRET (fuerte y
+# único: con environment=production el arranque aborta si detecta el default
+# del repo).
 existingSecret: tridentyauditor-backend-secrets
 
 migrationJob:
   enabled: true
+  # Secret aparte con TRIDENTY_DATABASE_URL del rol DUEÑO de las tablas —
+  # solo el job de migraciones lo monta; los pods de la API nunca cargan
+  # esas credenciales.
+  existingSecret: tridentyauditor-migrations-secrets
 
 podAnnotations: {}
 nodeSelector: {}

@@ -116,6 +116,8 @@ export interface PhaseProgress {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
+  expires_in: number;
   user_id: string;
   email: string;
   full_name: string;
@@ -123,6 +125,12 @@ export interface LoginResponse {
   tenant_id: string | null;
   tenant_name: string | null;
   framework_code: string | null;
+}
+
+export interface RefreshResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
 }
 
 export interface User {

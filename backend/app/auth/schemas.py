@@ -13,6 +13,8 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
+    expires_in: int  # segundos de vida del access token
     user_id: uuid.UUID
     email: str
     full_name: str
@@ -20,6 +22,20 @@ class TokenResponse(BaseModel):
     tenant_id: uuid.UUID | None
     tenant_name: str | None
     framework_code: str | None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
 
 
 class MeRead(BaseModel):

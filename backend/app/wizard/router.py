@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.activity.service import log_event
 from app.core.database import get_db
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
 from app.frameworks.models import Framework
@@ -41,6 +42,14 @@ def instantiate(
 ):
     framework_id = _tenant_framework_id(db, principal.tenant_id)
     created = service.instantiate(db, principal.tenant_id, framework_id)
+    log_event(
+        db,
+        action="wizard.instantiated",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        detail=f"{created} tareas",
+    )
     return schemas.InstantiateResult(created=created)
 
 

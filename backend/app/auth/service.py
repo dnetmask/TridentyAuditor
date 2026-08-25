@@ -1,12 +1,20 @@
+import hashlib
+import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.models import User, UserRole
-from app.core.security import hash_password, verify_password
+from app.activity.service import log_event_now
+from app.auth.models import RefreshToken, User, UserRole
+from app.core.config import get_settings
+from app.core.database import SessionLocal
+from app.core.security import burn_password_check, hash_password, verify_password
 from app.tenants.models import Tenant
+
+settings = get_settings()
 
 
 class AuthError(Exception):
@@ -14,6 +22,14 @@ class AuthError(Exception):
 
 
 class InvalidCredentials(AuthError):
+    pass
+
+
+class AccountLocked(AuthError):
+    pass
+
+
+class InvalidRefreshToken(AuthError):
     pass
 
 
@@ -63,12 +79,101 @@ def bootstrap_super_admin(db: Session, *, email: str | None, password: str | Non
     db.commit()
 
 
-def authenticate(db: Session, email: str, password: str) -> User:
+def _register_failed_login(user_id: uuid.UUID, email: str, ip: str | None) -> None:
+    """Suma un intento fallido y bloquea al llegar al umbral.
+
+    En su propia transacción: la sesión del request hace rollback cuando el
+    login termina en 401, así que el contador no puede viajar ahí.
+    """
+    with SessionLocal() as db:
+        user = db.get(User, user_id)
+        if user is None:
+            return
+        user.failed_login_attempts += 1
+        locked = user.failed_login_attempts >= settings.login_lockout_attempts
+        if locked:
+            user.locked_until = datetime.now(UTC) + timedelta(minutes=settings.login_lockout_minutes)
+            user.failed_login_attempts = 0
+        db.commit()
+    log_event_now(
+        action="auth.login_locked" if locked else "auth.login_failed",
+        actor_email=email,
+        tenant_id=None,
+        ip=ip,
+        detail=f"Cuenta bloqueada {settings.login_lockout_minutes} min" if locked else None,
+    )
+
+
+def authenticate(db: Session, email: str, password: str, *, ip: str | None = None) -> User:
     stmt = select(User).where(func.lower(User.email) == email.lower())
     user = db.scalars(stmt).first()
-    if user is None or not user.is_active or not verify_password(password, user.password_hash):
+
+    if user is None:
+        # Mismo costo de bcrypt que una cuenta real — sin esto, la latencia
+        # del short-circuit revela qué emails están registrados.
+        burn_password_check()
+        log_event_now(action="auth.login_failed", actor_email=email, ip=ip)
         raise InvalidCredentials("Email o contraseña incorrectos")
+
+    if user.locked_until is not None and user.locked_until > datetime.now(UTC):
+        burn_password_check()
+        raise AccountLocked(
+            "Cuenta bloqueada temporalmente por intentos fallidos; intenta de nuevo más tarde"
+        )
+
+    if not user.is_active or not verify_password(password, user.password_hash):
+        if user.is_active:
+            _register_failed_login(user.id, email, ip)
+        else:
+            log_event_now(action="auth.login_failed", actor_email=email, ip=ip, detail="cuenta inactiva")
+        raise InvalidCredentials("Email o contraseña incorrectos")
+
+    if user.failed_login_attempts or user.locked_until is not None:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.flush()
     return user
+
+
+def _hash_refresh_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def issue_refresh_token(db: Session, user_id: uuid.UUID) -> str:
+    raw = secrets.token_urlsafe(48)
+    db.add(
+        RefreshToken(
+            user_id=user_id,
+            token_hash=_hash_refresh_token(raw),
+            expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_token_days),
+        )
+    )
+    db.flush()
+    return raw
+
+
+def rotate_refresh_token(db: Session, raw_token: str) -> tuple[User, str]:
+    """Valida el refresh token, lo revoca y emite uno nuevo (rotación por uso)."""
+    stmt = select(RefreshToken).where(RefreshToken.token_hash == _hash_refresh_token(raw_token))
+    stored = db.scalars(stmt).first()
+    now = datetime.now(UTC)
+    if stored is None or stored.revoked_at is not None or stored.expires_at <= now:
+        raise InvalidRefreshToken("Refresh token inválido, revocado o expirado")
+    user = db.get(User, stored.user_id)
+    if user is None or not user.is_active:
+        raise InvalidRefreshToken("La cuenta ya no está activa")
+    stored.revoked_at = now
+    new_raw = issue_refresh_token(db, user.id)
+    return user, new_raw
+
+
+def revoke_refresh_token(db: Session, raw_token: str) -> None:
+    """Revoca el refresh token si existe — idempotente, nunca falla."""
+    stmt = select(RefreshToken).where(RefreshToken.token_hash == _hash_refresh_token(raw_token))
+    stored = db.scalars(stmt).first()
+    if stored is not None and stored.revoked_at is None:
+        stored.revoked_at = datetime.now(UTC)
+        db.flush()
 
 
 def get_tenant_name(db: Session, tenant_id: uuid.UUID | None) -> str | None:
