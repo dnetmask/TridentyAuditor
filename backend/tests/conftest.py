@@ -170,16 +170,19 @@ def upload_document(client):
         code: str,
         title: str = "Documento de prueba",
         document_type: str = "policy",
-        control_id: str | None = None,
+        control_ids: list[str] | None = None,
         retention_months: int | None = None,
         change_summary: str | None = None,
         filename: str = "evidencia.pdf",
         content: bytes = b"%PDF-1.4 contenido de prueba",
         content_type: str = "application/pdf",
+        extra_fields: dict | None = None,
     ):
         data = {"code": code, "title": title, "document_type": document_type}
-        if control_id is not None:
-            data["control_id"] = control_id
+        if control_ids is not None:
+            data["control_ids"] = control_ids
+        if extra_fields:
+            data.update(extra_fields)
         if retention_months is not None:
             data["retention_months"] = str(retention_months)
         if change_summary is not None:
@@ -200,14 +203,14 @@ def upload_version(client):
         headers: dict[str, str],
         document_id: str,
         *,
-        change_summary: str | None = None,
+        # Obligatorio desde la Fase 1 (control de cambios, ISO 7.5.3.e) —
+        # el default deja pasar a los tests que no ejercitan este campo.
+        change_summary: str = "Actualización de prueba",
         filename: str = "evidencia-v2.pdf",
         content: bytes = b"%PDF-1.4 v2",
         content_type: str = "application/pdf",
     ):
-        data = {}
-        if change_summary is not None:
-            data["change_summary"] = change_summary
+        data = {"change_summary": change_summary}
         return client.post(
             f"/api/v1/documents/{document_id}/versions",
             data=data,

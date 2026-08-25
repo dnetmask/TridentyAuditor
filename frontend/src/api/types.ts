@@ -27,11 +27,35 @@ export interface DocumentVersion {
   original_filename: string | null;
   content_type: string | null;
   file_size: number | null;
+  file_sha256: string | null;
   change_summary: string | null;
   created_by: string;
   approved_by: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
   created_at: string;
   approved_at: string | null;
+}
+
+export type DocumentOrigin = "internal" | "external";
+
+export interface DocumentControl {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface DocumentArea {
+  id: string;
+  name: string;
+}
+
+export interface Area {
+  id: string;
+  name: string;
+  manager_user_id: string | null;
+  created_at: string;
 }
 
 export interface DocumentDetail {
@@ -39,8 +63,17 @@ export interface DocumentDetail {
   code: string;
   title: string;
   document_type: string;
-  control_id: string | null;
   retention_months: number | null;
+  area: DocumentArea | null;
+  implementation_date: string | null;
+  review_frequency_months: number | null;
+  next_review_date: string | null;
+  origin: DocumentOrigin;
+  external_source: string | null;
+  retired_at: string | null;
+  retired_by: string | null;
+  retirement_reason: string | null;
+  controls: DocumentControl[];
   created_at: string;
   versions: DocumentVersion[];
 }

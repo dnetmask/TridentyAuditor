@@ -14,12 +14,23 @@ def test_reject_version_returns_to_draft(client, make_tenant, auth_headers, uplo
     doc_id = upload_document(headers, code="REJ-001").json()["id"]
 
     client.post(f"/api/v1/documents/{doc_id}/versions/1/submit", headers=headers)
-    resp = client.post(f"/api/v1/documents/{doc_id}/versions/1/reject", headers=headers)
+    resp = client.post(
+        f"/api/v1/documents/{doc_id}/versions/1/reject",
+        json={"reason": "Le falta el alcance"},
+        headers=headers,
+    )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "draft"
+    body = resp.json()
+    assert body["status"] == "draft"
+    assert body["rejection_reason"] == "Le falta el alcance"
+    assert body["rejected_by"]
 
     # Rechazar algo que no está en revisión es 409, no un no-op silencioso.
-    resp = client.post(f"/api/v1/documents/{doc_id}/versions/1/reject", headers=headers)
+    resp = client.post(
+        f"/api/v1/documents/{doc_id}/versions/1/reject",
+        json={"reason": "otra vez"},
+        headers=headers,
+    )
     assert resp.status_code == 409
 
 
@@ -30,7 +41,11 @@ def test_reject_requires_tenant_admin(client, make_tenant, auth_headers, upload_
     doc_id = upload_document(admin, code="REJ-002").json()["id"]
     client.post(f"/api/v1/documents/{doc_id}/versions/1/submit", headers=admin)
 
-    resp = client.post(f"/api/v1/documents/{doc_id}/versions/1/reject", headers=auditor)
+    resp = client.post(
+        f"/api/v1/documents/{doc_id}/versions/1/reject",
+        json={"reason": "no debería poder"},
+        headers=auditor,
+    )
     assert resp.status_code == 403
 
 

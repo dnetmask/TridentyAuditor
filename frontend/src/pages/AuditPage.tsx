@@ -104,7 +104,7 @@ export function AuditPage() {
   }
 
   const approvedDocuments = useMemo(
-    () => documents.filter((d) => d.versions.some((v) => v.status === "approved")),
+    () => documents.filter((d) => !d.retired_at && d.versions.some((v) => v.status === "approved")),
     [documents],
   );
   const programTitle = (id: string) => programs?.find((p) => p.id === id)?.title ?? "—";

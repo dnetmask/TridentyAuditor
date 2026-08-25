@@ -174,9 +174,27 @@ export const api = {
   getFramework: (code: string) =>
     request<import("./types").FrameworkDetail>(`/api/v1/frameworks/${encodeURIComponent(code)}`),
 
+  // --- Áreas ---
+  listAreas: (token: string) => request<import("./types").Area[]>("/api/v1/areas", { token }),
+
+  createArea: (token: string, payload: { name: string; manager_user_id?: string | null }) =>
+    request<import("./types").Area>("/api/v1/areas", { method: "POST", token, body: payload }),
+
+  updateArea: (
+    token: string,
+    areaId: string,
+    payload: { name?: string; manager_user_id?: string | null },
+  ) => request<import("./types").Area>(`/api/v1/areas/${areaId}`, { method: "PATCH", token, body: payload }),
+
   // --- MOD·DOC ---
   listDocuments: (token: string) =>
     request<import("./types").DocumentDetail[]>("/api/v1/documents", { token }),
+
+  nextDocumentCode: (token: string, documentType: string) =>
+    request<{ code: string }>(
+      `/api/v1/documents/next-code?document_type=${encodeURIComponent(documentType)}`,
+      { token },
+    ),
 
   createDocument: (
     token: string,
@@ -187,6 +205,13 @@ export const api = {
       file: File;
       retention_months?: number | null;
       change_summary?: string | null;
+      area_id?: string | null;
+      implementation_date?: string | null;
+      review_frequency_months?: number | null;
+      next_review_date?: string | null;
+      origin?: import("./types").DocumentOrigin;
+      external_source?: string | null;
+      control_ids?: string[];
     },
   ) => {
     const form = new FormData();
@@ -195,13 +220,50 @@ export const api = {
     form.set("document_type", payload.document_type);
     if (payload.retention_months != null) form.set("retention_months", String(payload.retention_months));
     if (payload.change_summary) form.set("change_summary", payload.change_summary);
+    if (payload.area_id) form.set("area_id", payload.area_id);
+    if (payload.implementation_date) form.set("implementation_date", payload.implementation_date);
+    if (payload.review_frequency_months != null)
+      form.set("review_frequency_months", String(payload.review_frequency_months));
+    if (payload.next_review_date) form.set("next_review_date", payload.next_review_date);
+    if (payload.origin) form.set("origin", payload.origin);
+    if (payload.external_source) form.set("external_source", payload.external_source);
+    for (const controlId of payload.control_ids ?? []) form.append("control_ids", controlId);
     form.set("file", payload.file);
     return requestFormData<import("./types").DocumentDetail>("/api/v1/documents", form, token);
   },
 
-  createVersion: (token: string, documentId: string, payload: { file: File; change_summary?: string | null }) => {
+  updateDocument: (
+    token: string,
+    documentId: string,
+    payload: {
+      title?: string;
+      document_type?: string;
+      retention_months?: number | null;
+      area_id?: string | null;
+      implementation_date?: string | null;
+      review_frequency_months?: number | null;
+      next_review_date?: string | null;
+      origin?: import("./types").DocumentOrigin;
+      external_source?: string | null;
+      control_ids?: string[];
+    },
+  ) =>
+    request<import("./types").DocumentDetail>(`/api/v1/documents/${documentId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  retireDocument: (token: string, documentId: string, reason: string) =>
+    request<import("./types").DocumentDetail>(`/api/v1/documents/${documentId}/retire`, {
+      method: "POST",
+      token,
+      body: { reason },
+    }),
+
+  createVersion: (token: string, documentId: string, payload: { file: File; change_summary: string }) => {
     const form = new FormData();
-    if (payload.change_summary) form.set("change_summary", payload.change_summary);
+    form.set("change_summary", payload.change_summary);
     form.set("file", payload.file);
     return requestFormData<import("./types").DocumentVersion>(
       `/api/v1/documents/${documentId}/versions`,
@@ -219,10 +281,10 @@ export const api = {
       { method: "POST", token },
     ),
 
-  rejectVersion: (token: string, documentId: string, versionNumber: number) =>
+  rejectVersion: (token: string, documentId: string, versionNumber: number, reason: string) =>
     request<import("./types").DocumentVersion>(
       `/api/v1/documents/${documentId}/versions/${versionNumber}/reject`,
-      { method: "POST", token },
+      { method: "POST", token, body: { reason } },
     ),
 
   approveVersion: (token: string, documentId: string, versionNumber: number) =>

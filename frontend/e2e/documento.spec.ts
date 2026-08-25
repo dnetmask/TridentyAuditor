@@ -26,5 +26,5 @@ test("ciclo completo de un documento: crear → enviar a revisión → aprobar",
   await row.click(); // abre el detalle con las acciones por versión
   await page.click('button:has-text("Enviar a revisión")');
   await page.click('button:has-text("Aprobar")');
-  await expect(page.getByText("Aprobado").first()).toBeVisible();
+  await expect(page.locator(".badge-approved").first()).toBeVisible();
 });

@@ -6,6 +6,7 @@ from alembic import context
 
 # Import models so they register on Base.metadata before autogenerate/create.
 from app.activity import models as activity_models  # noqa: F401
+from app.areas import models as areas_models  # noqa: F401
 from app.audit import models as audit_models  # noqa: F401
 from app.auth import models as auth_models  # noqa: F401
 from app.core.config import get_settings

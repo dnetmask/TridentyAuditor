@@ -63,7 +63,7 @@ export function WizardPage() {
   const cycleLabel = isCno ? "ciclo de cumplimiento CNO" : "ciclo SGSI";
 
   const approvedDocuments = useMemo(
-    () => documents.filter((d) => d.versions.some((v) => v.status === "approved")),
+    () => documents.filter((d) => !d.retired_at && d.versions.some((v) => v.status === "approved")),
     [documents],
   );
 

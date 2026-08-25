@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.activity.router import router as activity_router
+from app.areas.router import router as areas_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.auth.service import bootstrap_super_admin
@@ -166,6 +167,7 @@ app.include_router(frameworks_router)
 app.include_router(domains_router)
 app.include_router(controls_router)
 app.include_router(tenants_router)
+app.include_router(areas_router)
 app.include_router(documents_router)
 app.include_router(wizard_router)
 app.include_router(soa_router)

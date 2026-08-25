@@ -91,7 +91,7 @@ export function RiskPage() {
 
   const assetName = (id: string | null) => assets?.find((a) => a.id === id)?.name ?? "—";
   const approvedDocuments = useMemo(
-    () => documents.filter((d) => d.versions.some((v) => v.status === "approved")),
+    () => documents.filter((d) => !d.retired_at && d.versions.some((v) => v.status === "approved")),
     [documents],
   );
 

@@ -41,7 +41,7 @@ export function SoaPage() {
   }, []);
 
   const approvedDocuments = useMemo(
-    () => documents.filter((d) => d.versions.some((v) => v.status === "approved")),
+    () => documents.filter((d) => !d.retired_at && d.versions.some((v) => v.status === "approved")),
     [documents],
   );
 

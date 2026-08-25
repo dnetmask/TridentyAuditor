@@ -578,6 +578,11 @@ form.stacked {
   width: 100%;
   max-width: 480px;
   padding: 1.5rem;
+  /* Los modales largos (ej. el de documento con clasificación completa) se
+     desplazan dentro de sí mismos — el botón de guardar nunca queda fuera
+     del alcance en pantallas bajas. */
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
 }
 
 .modal h2 {
@@ -964,3 +969,47 @@ form.stacked {
   padding: 0;
 }
 
+
+/* ---- MOD·DOC Fase 1: filtros, revisión programada y derogación ---- */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.filter-bar input[type="search"] {
+  flex: 1;
+  min-width: 180px;
+}
+
+.review-overdue {
+  color: var(--risk-critical-fg);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.review-soon {
+  color: var(--risk-medium-fg);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.retired-badge {
+  display: inline-block;
+  background: var(--status-obsolete-bg);
+  color: var(--status-obsolete-fg);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.doc-meta-row {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
