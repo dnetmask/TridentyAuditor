@@ -4,11 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import { useCompliance } from "../context/ComplianceContext";
 import { StatusBadge } from "../components/StatusBadge";
 import type {
+  ApprovalStep,
   Area,
   DirectoryUser,
   DocumentControl,
   DocumentDetail,
   DocumentOrigin,
+  DocumentVersion,
 } from "../api/types";
 
 function formatFileSize(bytes: number | null): string {
@@ -58,13 +60,23 @@ function ReviewCell({ doc }: { doc: DocumentDetail }) {
   const days = daysUntil(doc.next_review_date);
   if (days < 0) return <span className="review-overdue">vencida hace {-days} d</span>;
   if (days <= 30) return <span className="review-soon">en {days} d</span>;
-  return <span>{doc.next_review_date}</span>;
+  return (
+    <span className="review-ok" title={doc.next_review_date}>
+      faltan {days} d
+    </span>
+  );
 }
+
+const STEP_LABELS: Record<string, string> = {
+  area_manager: "Gerente de área",
+  security: "Seguridad de la información",
+};
 
 export function DocumentsPage() {
   const { session } = useAuth();
   const { refresh: refreshCompliance } = useCompliance();
   const token = session!.token;
+  const userId = session!.userId;
   const canWrite = session!.role === "tenant_admin" || session!.role === "internal_auditor";
   const canReview = session!.role === "tenant_admin";
 
@@ -162,7 +174,8 @@ export function DocumentsPage() {
         <div>
           <h1>Control documental</h1>
           <p>
-            MOD·DOC — versionado y flujo de aprobación. Solo puede haber una copia
+            MOD·DOC — versionado y aprobación multinivel: firma el gerente del área
+            encargada y luego seguridad de la información. Solo puede haber una copia
             vigente (<code>approved</code>) por documento; aprobar una versión nueva
             vuelve obsoleta a la anterior.
           </p>
@@ -271,6 +284,7 @@ export function DocumentsPage() {
                           <DocumentDetailPanel
                             doc={doc}
                             token={token}
+                            userId={userId}
                             canWrite={canWrite}
                             canReview={canReview}
                             busy={busy}
@@ -359,9 +373,45 @@ function currentVersion(doc: DocumentDetail) {
   return [...doc.versions].sort((a, b) => b.version_number - a.version_number)[0] ?? null;
 }
 
+// Aprobación multinivel (Fase 2): con área firma primero su gerente (o un
+// Admin en su lugar) y siempre cierra seguridad de la información (Admin).
+function requiredSteps(doc: DocumentDetail): ApprovalStep[] {
+  return doc.area ? ["area_manager", "security"] : ["security"];
+}
+
+function nextPendingStep(doc: DocumentDetail, version: DocumentVersion): ApprovalStep | null {
+  const signed = new Set(version.approvals.map((a) => a.step));
+  return requiredSteps(doc).find((step) => !signed.has(step)) ?? null;
+}
+
+function ApprovalSteps({ doc, version }: { doc: DocumentDetail; version: DocumentVersion }) {
+  // Solo tiene sentido mostrar el checklist mientras se firma, o cuando la
+  // versión aprobada tiene firmas registradas (las anteriores a la Fase 2
+  // solo traen approved_by y ya se muestra arriba).
+  if (version.status !== "in_review" && version.approvals.length === 0) return null;
+  const signedByStep = new Map(version.approvals.map((a) => [a.step, a]));
+  return (
+    <span className="approval-steps">
+      {requiredSteps(doc).map((step) => {
+        const signature = signedByStep.get(step);
+        return (
+          <span key={step} className={signature ? "approval-step approval-step-done" : "approval-step"}>
+            {signature ? "✓" : "○"} {STEP_LABELS[step]}
+            {step === "area_manager" && doc.area ? ` (${doc.area.name})` : ""}
+            {signature
+              ? `: ${signature.signed_by} · ${new Date(signature.signed_at).toLocaleDateString()}`
+              : ": pendiente"}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function DocumentDetailPanel({
   doc,
   token,
+  userId,
   canWrite,
   canReview,
   busy,
@@ -373,6 +423,7 @@ function DocumentDetailPanel({
 }: {
   doc: DocumentDetail;
   token: string;
+  userId: string;
   canWrite: boolean;
   canReview: boolean;
   busy: boolean;
@@ -447,6 +498,7 @@ function DocumentDetailPanel({
                 Rechazada por {v.rejected_by}: {v.rejection_reason}
               </span>
             )}
+            <ApprovalSteps doc={doc} version={v} />
           </div>
           <div className="version-actions">
             {v.original_filename && (
@@ -463,20 +515,31 @@ function DocumentDetailPanel({
                 Enviar a revisión
               </button>
             )}
-            {!retired && v.status === "in_review" && canReview && (
-              <>
-                <button
-                  className="btn btn-primary btn-sm"
-                  disabled={busy}
-                  onClick={() => onAction(() => api.approveVersion(token, doc.id, v.version_number))}
-                >
-                  Aprobar
-                </button>
-                <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => onReject(v.version_number)}>
-                  Rechazar
-                </button>
-              </>
-            )}
+            {!retired && v.status === "in_review" && (() => {
+              const nextStep = nextPendingStep(doc, v);
+              const isAreaManager = doc.area?.manager_user_id === userId;
+              const canSign =
+                nextStep != null &&
+                (canReview || (nextStep === "area_manager" && isAreaManager));
+              return (
+                <>
+                  {canSign && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={busy}
+                      onClick={() => onAction(() => api.approveVersion(token, doc.id, v.version_number))}
+                    >
+                      {nextStep === "security" ? "Aprobar" : "Firmar como gerente de área"}
+                    </button>
+                  )}
+                  {canReview && (
+                    <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => onReject(v.version_number)}>
+                      Rechazar
+                    </button>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       ))}
@@ -896,7 +959,8 @@ function AreasModal({
         <h2>Áreas del tenant</h2>
         <p className="muted" style={{ marginTop: 0 }}>
           El área encargada de cada documento, proceso o control documentado. Su gerente
-          firmará el primer paso de la aprobación multinivel (Fase 2 de la ruta).
+          firma el primer paso de la aprobación multinivel; seguridad de la información
+          (Admin del tenant) firma el segundo y publica.
         </p>
         {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
 

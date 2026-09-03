@@ -20,6 +20,15 @@ export interface Tenant {
 
 export type DocumentStatus = "draft" | "in_review" | "approved" | "obsolete";
 
+export type ApprovalStep = "area_manager" | "security";
+
+export interface DocumentApproval {
+  step: ApprovalStep;
+  signed_by: string;
+  signed_at: string;
+  file_sha256: string | null;
+}
+
 export interface DocumentVersion {
   id: string;
   version_number: number;
@@ -34,6 +43,7 @@ export interface DocumentVersion {
   rejected_by: string | null;
   rejected_at: string | null;
   rejection_reason: string | null;
+  approvals: DocumentApproval[];
   created_at: string;
   approved_at: string | null;
 }
@@ -49,6 +59,7 @@ export interface DocumentControl {
 export interface DocumentArea {
   id: string;
   name: string;
+  manager_user_id: string | null;
 }
 
 export interface Area {
@@ -274,6 +285,53 @@ export interface Risk {
   control_ids: string[];
   created_at: string;
   updated_at: string;
+}
+
+// --- MOD·LEG (matriz de requisitos legales) ---
+
+export type LegalRequirementType =
+  | "constitution"
+  | "law"
+  | "decree"
+  | "resolution"
+  | "circular"
+  | "standard"
+  | "contract"
+  | "guideline"
+  | "other";
+
+export type LegalRequirementStatus = "in_force" | "repealed";
+
+export type LegalComplianceRating = "not_evaluated" | "compliant" | "partial" | "non_compliant";
+
+export interface LegalRequirement {
+  id: string;
+  requirement_type: LegalRequirementType;
+  name: string;
+  issuer: string | null;
+  publication_year: number | null;
+  articles: string | null;
+  description: string | null;
+  topic: string | null;
+  responsible_user_id: string | null;
+  evidence_document_id: string | null;
+  application_evidence: string | null;
+  review_frequency_months: number | null;
+  next_review_date: string | null;
+  expiration_date: string | null;
+  status: LegalRequirementStatus;
+  compliance_rating: LegalComplianceRating;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LegalSummary {
+  total: number;
+  compliant: number;
+  partial: number;
+  non_compliant: number;
+  not_evaluated: number;
+  percentage: number;
 }
 
 // --- MOD·AUD (auditoría interna) ---

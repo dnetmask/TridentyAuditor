@@ -13,6 +13,7 @@ from app.documents import schemas, service
 from app.documents.filetypes import DisallowedFileType, validate_and_resolve_type
 from app.documents.models import DocumentOrigin
 from app.documents.service import (
+    ApprovalNotAllowed,
     DocumentNotFound,
     FileIntegrityError,
     FileMissing,
@@ -361,24 +362,52 @@ def approve_version(
     document_id: uuid.UUID,
     version_number: int,
     db: Session = Depends(get_tenant_db),
-    principal: TenantPrincipal = Depends(can_review),
+    # Cualquier miembro del tenant puede LLAMAR — el gerente de un área puede
+    # tener rol auditor o visualizador. Quién puede firmar QUÉ paso lo decide
+    # el servicio (gerente del área o Admin; seguridad = solo Admin).
+    principal: TenantPrincipal = Depends(decode_tenant_token),
 ):
+    """Firma el siguiente paso pendiente de la aprobación multinivel.
+
+    Documento con área: firma 1 = gerente del área (o Admin en su lugar),
+    firma 2 = seguridad de la información (Admin). Sin área: una sola firma
+    de seguridad. La versión pasa a ``approved`` con la última firma.
+    """
     try:
-        version = service.approve_version(
-            db, principal.tenant_id, document_id, version_number, principal.email
+        version, step = service.sign_approval(
+            db,
+            principal.tenant_id,
+            document_id,
+            version_number,
+            signer_email=principal.email,
+            signer_user_id=principal.user_id,
+            signer_role=principal.role,
         )
     except VersionNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Versión no encontrada") from exc
+    except ApprovalNotAllowed as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
     except InvalidTransition as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     log_event(
         db,
-        action="documents.approved",
+        action="documents.signed",
         actor_email=principal.email,
         actor_user_id=principal.user_id,
         tenant_id=principal.tenant_id,
         entity_type="document",
         entity_id=document_id,
-        detail=f"versión {version_number}",
+        detail=f"versión {version_number} · firma {step.value} · sello {version.file_sha256 or 'sin hash'}",
     )
+    if version.status.value == "approved":
+        log_event(
+            db,
+            action="documents.approved",
+            actor_email=principal.email,
+            actor_user_id=principal.user_id,
+            tenant_id=principal.tenant_id,
+            entity_type="document",
+            entity_id=document_id,
+            detail=f"versión {version_number}",
+        )
     return version

@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.documents import storage
 from app.documents.models import (
+    ApprovalStep,
     Document,
+    DocumentApproval,
     DocumentControlLink,
     DocumentOrigin,
     DocumentStatus,
@@ -37,6 +39,10 @@ class InvalidTransition(DocumentError):
 
 class UnknownControl(DocumentError):
     """Algún control_id del enlace no existe en el motor de frameworks."""
+
+
+class ApprovalNotAllowed(DocumentError):
+    """El usuario no puede firmar el paso pendiente de la aprobación (403)."""
 
 
 class FileIntegrityError(DocumentError):
@@ -109,7 +115,7 @@ def approved_document_ids(db: Session, tenant_id: str) -> set[uuid.UUID]:
 
 def _document_query_options():
     return (
-        selectinload(Document.versions),
+        selectinload(Document.versions).selectinload(DocumentVersion.approvals),
         selectinload(Document.control_links).selectinload(DocumentControlLink.control),
         selectinload(Document.area),
     )
@@ -419,6 +425,10 @@ def reject_version(
     version.rejected_by = rejected_by
     version.rejected_at = datetime.now(UTC)
     version.rejection_reason = reason
+    # Rechazar invalida las firmas parciales: el siguiente envío a revisión
+    # arranca la aprobación multinivel desde cero (la bitácora conserva el
+    # rastro de quién había firmado).
+    version.approvals.clear()
     db.flush()
     return version
 
@@ -440,9 +450,57 @@ def get_version_file(
     return version, path
 
 
-def approve_version(
-    db: Session, tenant_id: str, document_id: uuid.UUID, version_number: int, approved_by: str
-) -> DocumentVersion:
+def required_steps(document: Document) -> list[ApprovalStep]:
+    """Pasos de firma que exige este documento, en orden.
+
+    Con área asignada firma primero su gerente (o un Admin en su lugar);
+    seguridad de la información firma siempre y siempre de última. Sin área,
+    el paso del gerente se omite — los documentos existentes no se rompen.
+    """
+    steps: list[ApprovalStep] = []
+    if document.area_id is not None:
+        steps.append(ApprovalStep.AREA_MANAGER)
+    steps.append(ApprovalStep.SECURITY)
+    return steps
+
+
+def _authorize_step(
+    step: ApprovalStep, document: Document, *, signer_user_id: str, signer_role: str
+) -> None:
+    if step == ApprovalStep.AREA_MANAGER:
+        is_manager = (
+            document.area is not None
+            and document.area.manager_user_id is not None
+            and str(document.area.manager_user_id) == str(signer_user_id)
+        )
+        if not (is_manager or signer_role == "tenant_admin"):
+            raise ApprovalNotAllowed(
+                "La firma pendiente es del gerente del área (o un Admin del tenant en su lugar)"
+            )
+    elif signer_role != "tenant_admin":
+        raise ApprovalNotAllowed(
+            "La firma de seguridad de la información requiere un Admin del tenant"
+        )
+
+
+def sign_approval(
+    db: Session,
+    tenant_id: str,
+    document_id: uuid.UUID,
+    version_number: int,
+    *,
+    signer_email: str,
+    signer_user_id: str,
+    signer_role: str,
+) -> tuple[DocumentVersion, ApprovalStep]:
+    """Firma el siguiente paso pendiente de la aprobación multinivel (Fase 2).
+
+    Cada llamada firma UN paso. Solo cuando el último paso queda firmado la
+    versión pasa a ``approved`` (y la vigente anterior a ``obsolete``). El
+    mismo Admin puede firmar ambos pasos — en tenants de una sola persona
+    bloquearlo dejaría el flujo muerto; las dos firmas quedan registradas por
+    separado de todas formas.
+    """
     version = _get_version(db, tenant_id, document_id, version_number)
     if version.status != DocumentStatus.IN_REVIEW:
         raise InvalidTransition(f"No se puede aprobar desde estado '{version.status.value}'")
@@ -450,15 +508,39 @@ def approve_version(
     document = _get_document(db, tenant_id, document_id)
     if document.retired_at is not None:
         raise InvalidTransition("Un documento derogado no admite aprobaciones")
-    for other in document.versions:
-        if other.id != version.id and other.status == DocumentStatus.APPROVED:
-            other.status = DocumentStatus.OBSOLETE
 
-    version.status = DocumentStatus.APPROVED
-    version.approved_by = approved_by
-    version.approved_at = datetime.now(UTC)
-    # Revisión periódica programada: aprobar arranca (o reinicia) el reloj.
-    if document.review_frequency_months:
-        document.next_review_date = _add_months(date.today(), document.review_frequency_months)
+    steps = required_steps(document)
+    signed = {approval.step for approval in version.approvals}
+    pending = [s for s in steps if s not in signed]
+    if not pending:  # no debería pasar: sin pendientes la versión ya está approved
+        raise InvalidTransition("Esta versión no tiene firmas pendientes")
+    step = pending[0]
+    _authorize_step(step, document, signer_user_id=signer_user_id, signer_role=signer_role)
+
+    db.add(
+        DocumentApproval(
+            tenant_id=tenant_id,
+            version_id=version.id,
+            step=step,
+            signed_by=signer_email,
+            signed_by_id=uuid.UUID(signer_user_id),
+            signed_at=datetime.now(UTC),
+            # El sello: hash del binario en el momento de la firma.
+            file_sha256=version.file_sha256,
+        )
+    )
     db.flush()
-    return version
+    db.refresh(version)
+
+    if len(pending) == 1:  # esta era la última firma → publica
+        for other in document.versions:
+            if other.id != version.id and other.status == DocumentStatus.APPROVED:
+                other.status = DocumentStatus.OBSOLETE
+        version.status = DocumentStatus.APPROVED
+        version.approved_by = signer_email
+        version.approved_at = datetime.now(UTC)
+        # Revisión periódica programada: aprobar arranca (o reinicia) el reloj.
+        if document.review_frequency_months:
+            document.next_review_date = _add_months(date.today(), document.review_frequency_months)
+        db.flush()
+    return version, step

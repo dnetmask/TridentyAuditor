@@ -1,6 +1,6 @@
 # MOD·DOC — Control documental
 
-**Fase:** 1 · **Estado:** ✅ Implementado (`backend/app/documents`, `backend/app/areas`)
+**Fases:** 1 y 2 · **Estado:** ✅ Implementado (`backend/app/documents`, `backend/app/areas`)
 
 Versionado y flujo de aprobación de documentos, con RLS por tenant. Base
 sobre la que cuelga la evidencia de los demás módulos (MOD·RSK, MOD·SOA,
@@ -77,24 +77,48 @@ sección 04 (funciona sin ningún servicio externo). Migrar a Object Storage
 S3-compatible con política WORM — para HA multi-réplica y retención
 inmutable de verdad — sigue pendiente como hardening de producción.
 
-## Flujo de aprobación (copias controladas)
+## Flujo de aprobación multinivel (copias controladas)
 
 ```
-   draft ──submit──▶ in_review ──approve──▶ approved
-     ▲                    │                     │
-     └──────reject────────┘         (aprobar otra versión
-        (motivo obligatorio)         marca esta como)
-                                             ▼
-                                         obsolete
+   draft ──submit──▶ in_review ──firma 1──▶ in_review ──firma 2──▶ approved
+     ▲                    │        (gerente de área,      (seguridad de la
+     └──────reject────────┘         si hay área)           información)
+        (motivo obligatorio;                                    │
+         borra firmas parciales)              (aprobar otra versión
+                                               marca esta como)
+                                                      ▼
+                                                  obsolete
 ```
+
+**Dos firmas por versión (Fase 2).** `POST .../approve` firma el siguiente
+paso pendiente, no aprueba de golpe:
+
+1. **Gerente de área** — solo si el documento tiene área asignada. Firma el
+   `manager_user_id` del área, o cualquier Admin del tenant en su lugar
+   (área sin gerente no bloquea el flujo). El gerente puede tener cualquier
+   rol: la autorización la decide el servicio, no el rol del endpoint.
+2. **Seguridad de la información** — siempre obligatoria, siempre la última,
+   y solo la firma un Admin del tenant. Es la que publica la versión.
+
+Cada firma queda en `document_approvals` con su **sello verificable**:
+`(paso, firmante, timestamp, SHA-256 del binario al momento de firmar)` — la
+firma queda amarrada al archivo exacto que se aprobó, no a un registro
+mutable. El mismo Admin puede firmar ambos pasos (bloquearlo dejaría muerto
+el flujo en tenants de una sola persona); ambas firmas quedan registradas
+por separado de todas formas.
 
 - Solo puede haber una versión en `draft`/`in_review` a la vez por documento
   — hay que resolverla antes de abrir otra.
-- Al aprobar una versión, cualquier versión previamente `approved` del mismo
-  documento pasa a `obsolete` automáticamente (una sola copia vigente), y se
-  recalcula `next_review_date` si el documento tiene frecuencia de revisión.
-- Rechazar exige un motivo, que queda en la versión
-  (`rejection_reason`) y en la bitácora.
+- Al quedar aprobada una versión, cualquier versión previamente `approved`
+  del mismo documento pasa a `obsolete` automáticamente (una sola copia
+  vigente), y se recalcula `next_review_date` si hay frecuencia de revisión.
+- Rechazar exige un motivo, que queda en la versión (`rejection_reason`) y
+  en la bitácora — y **elimina las firmas parciales**: el siguiente envío a
+  revisión arranca la aprobación desde cero (la bitácora conserva el rastro
+  de quién había firmado).
+- Las versiones aprobadas antes de la Fase 2 conservan su
+  `approved_by`/`approved_at` de un solo paso — no se les inventan firmas
+  retroactivas.
 - No existe endpoint para editar o borrar una versión `approved` — es
   intencional: sección 06 del documento de arquitectura exige evidencia
   inmutable una vez publicada.
@@ -114,8 +138,8 @@ Todos requieren `Authorization: Bearer <jwt>`.
 | POST | `/api/v1/documents/{id}/versions` | `multipart/form-data` — nueva versión en `draft` con `change_summary` obligatorio |
 | GET | `/api/v1/documents/{id}/versions/{n}/file` | Descarga el binario (verifica SHA-256 antes de servir) |
 | POST | `/api/v1/documents/{id}/versions/{n}/submit` | `draft` → `in_review` |
-| POST | `/api/v1/documents/{id}/versions/{n}/reject` | `in_review` → `draft`, con `reason` obligatorio |
-| POST | `/api/v1/documents/{id}/versions/{n}/approve` | `in_review` → `approved` + recalcula próxima revisión |
+| POST | `/api/v1/documents/{id}/versions/{n}/reject` | `in_review` → `draft`, con `reason` obligatorio; borra firmas parciales |
+| POST | `/api/v1/documents/{id}/versions/{n}/approve` | Firma el siguiente paso pendiente (gerente de área → seguridad); con la última firma pasa a `approved` y recalcula próxima revisión |
 | POST | `/api/v1/areas` | Crea un área (tenant_admin) |
 | GET | `/api/v1/areas` | Lista las áreas del tenant |
 | PATCH | `/api/v1/areas/{id}` | Renombra o cambia el responsable del área |
@@ -140,10 +164,12 @@ rechazar, derogar, descargar) queda en la
 La pantalla de Documentos incluye: barra de filtros (búsqueda por
 código/título, tipo, estado vigente, área y vigencia — por defecto oculta
 derogados), columna de próxima revisión con semáforo (vencida en rojo,
-≤30 días en ámbar), badge "Derogado", panel de detalle con chips de
-controles y hash SHA-256, edición de metadatos, derogación con motivo,
-sugerencia automática de código al elegir tipo, y gestión de áreas
-(crear/listar con responsable) desde la misma pantalla.
+≤30 días en ámbar, verde "faltan N días" cuando hay margen), badge
+"Derogado", panel de detalle con chips de controles, hash SHA-256 y el
+**checklist de firmas** de cada versión (paso, firmante, fecha), botón de
+firma según quién es el usuario (gerente del área o Admin), edición de
+metadatos, derogación con motivo, sugerencia automática de código al elegir
+tipo, y gestión de áreas (crear/listar con gerente) desde la misma pantalla.
 
 ## Pendiente
 
@@ -153,5 +179,6 @@ sugerencia automática de código al elegir tipo, y gestión de áreas
   visual en la pantalla; no envía correos) — Fase 3 de la ruta.
 - Migrar el binario de disco local a Object Storage S3-compatible con
   política WORM (ver "Almacenamiento del binario" arriba) — Fase S2.
-- Aprobación multinivel (gerente de área + seguridad de la información) —
-  Fase 2 de la ruta. Hoy aprueba cualquier Admin del tenant (un solo paso).
+- Panel "elaboró / revisó / aprobó" con botón Ver inline y sello
+  OBSOLETO/copia no controlada en los PDF servidos — Fase 3 de la ruta
+  (las tres identidades ya existen: `created_by` + las dos firmas).

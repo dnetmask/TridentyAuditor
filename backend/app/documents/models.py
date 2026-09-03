@@ -117,6 +117,60 @@ class DocumentControlLink(Base):
     control: Mapped["Control"] = relationship()  # noqa: F821 - registrado por app.frameworks.models
 
 
+class ApprovalStep(str, enum.Enum):
+    """Pasos de la aprobación multinivel (Fase 2), en orden de firma.
+
+    ``AREA_MANAGER`` solo aplica si el documento tiene área asignada — firma
+    el ``manager_user_id`` del área (o un Admin del tenant en su lugar).
+    ``SECURITY`` (seguridad de la información) siempre es obligatorio y
+    siempre es la última firma: es la que publica.
+    """
+
+    AREA_MANAGER = "area_manager"
+    SECURITY = "security"
+
+
+class DocumentApproval(Base):
+    """Una firma de la aprobación multinivel — el sello verificable (Fase 2).
+
+    Cada firma guarda el SHA-256 del binario EN EL MOMENTO de firmar: el
+    sello queda amarrado al archivo exacto que se aprobó, no al registro
+    mutable de la versión. Las firmas de una versión rechazada se eliminan
+    (la bitácora conserva el rastro); una versión aprobada las conserva
+    para siempre.
+    """
+
+    __tablename__ = "document_approvals"
+    __table_args__ = (
+        UniqueConstraint("version_id", "step", name="uq_document_approval_version_step"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document_versions.id", ondelete="CASCADE"), nullable=False
+    )
+    step: Mapped[ApprovalStep] = mapped_column(
+        SAEnum(
+            ApprovalStep,
+            name="document_approval_step",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
+    # Email como texto inmutable (igual que approved_by/created_by) + el UUID
+    # del firmante para poder cruzar contra el directorio mientras exista.
+    signed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    signed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    signed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Nullable solo por versiones anteriores a la Fase 1 que no tienen hash.
+    file_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    version: Mapped["DocumentVersion"] = relationship(back_populates="approvals")
+
+
 class DocumentVersion(Base):
     __tablename__ = "document_versions"
     __table_args__ = (
@@ -158,3 +212,8 @@ class DocumentVersion(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     document: Mapped["Document"] = relationship(back_populates="versions")
+    approvals: Mapped[list["DocumentApproval"]] = relationship(
+        back_populates="version",
+        cascade="all, delete-orphan",
+        order_by="DocumentApproval.signed_at",
+    )

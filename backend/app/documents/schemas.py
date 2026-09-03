@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.documents.models import DocumentOrigin, DocumentStatus
+from app.documents.models import ApprovalStep, DocumentOrigin, DocumentStatus
 
 # Nota: no hay DocumentCreate/NewVersionCreate — ambos endpoints reciben
 # multipart/form-data (Form + UploadFile) porque exigen adjuntar un archivo,
@@ -25,6 +25,20 @@ class DocumentAreaRead(BaseModel):
 
     id: uuid.UUID
     name: str
+    # El frontend lo usa para saber si el usuario actual es el gerente que
+    # puede firmar el paso "gerente de área" de la aprobación multinivel.
+    manager_user_id: uuid.UUID | None = None
+
+
+class DocumentApprovalRead(BaseModel):
+    """Una firma de la aprobación multinivel, con su sello."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    step: ApprovalStep
+    signed_by: str
+    signed_at: datetime
+    file_sha256: str | None
 
 
 class DocumentVersionRead(BaseModel):
@@ -43,6 +57,7 @@ class DocumentVersionRead(BaseModel):
     rejected_by: str | None
     rejected_at: datetime | None
     rejection_reason: str | None
+    approvals: list[DocumentApprovalRead] = []
     created_at: datetime
     approved_at: datetime | None
 
