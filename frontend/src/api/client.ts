@@ -186,6 +186,34 @@ export const api = {
     payload: { name?: string; manager_user_id?: string | null },
   ) => request<import("./types").Area>(`/api/v1/areas/${areaId}`, { method: "PATCH", token, body: payload }),
 
+  // --- MOD·LEG (matriz de requisitos legales) ---
+  listLegalRequirements: (token: string) =>
+    request<import("./types").LegalRequirement[]>("/api/v1/legal-requirements", { token }),
+
+  legalSummary: (token: string) =>
+    request<import("./types").LegalSummary>("/api/v1/legal-requirements/summary", { token }),
+
+  createLegalRequirement: (
+    token: string,
+    payload: Partial<import("./types").LegalRequirement> & { name: string },
+  ) =>
+    request<import("./types").LegalRequirement>("/api/v1/legal-requirements", {
+      method: "POST",
+      token,
+      body: payload,
+    }),
+
+  updateLegalRequirement: (
+    token: string,
+    requirementId: string,
+    payload: Partial<import("./types").LegalRequirement>,
+  ) =>
+    request<import("./types").LegalRequirement>(`/api/v1/legal-requirements/${requirementId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
   // --- MOD·DOC ---
   listDocuments: (token: string) =>
     request<import("./types").DocumentDetail[]>("/api/v1/documents", { token }),

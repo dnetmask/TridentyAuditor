@@ -9,6 +9,7 @@ import { WizardPage } from "./pages/WizardPage";
 import { AdminTenantsPage } from "./pages/AdminTenantsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { SoaPage } from "./pages/SoaPage";
+import { LegalPage } from "./pages/LegalPage";
 import { RiskPage } from "./pages/RiskPage";
 import { AuditPage } from "./pages/AuditPage";
 import type { UserRole } from "./api/types";
@@ -63,6 +64,14 @@ export default function App() {
                 element={
                   <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
                     <DocumentsPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/requisitos-legales"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <LegalPage />
                   </RequireRole>
                 }
               />

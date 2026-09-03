@@ -19,6 +19,15 @@ adjuntar un archivo en borrador:
 | MOD·SOA | 60% | Controles aplicables con evidencia aprobada vinculada | Controles aplicables (`is_applicable=true`) |
 | MOD·WZD | 40% | Tareas que exigen evidencia y están cerradas | Tareas que exigen evidencia (`requires_evidence=true`) |
 
+**Con MOD·LEG levantado** (al menos un requisito legal vigente en la matriz),
+entra una tercera señal y los pesos se redistribuyen a **SoA 50% + asistente
+30% + requisitos legales 20%**, donde el componente legal es el nivel de
+cumplimiento de la matriz (`(cumple + 0.5×parcial) / vigentes` — ver
+[mod-leg.md](mod-leg.md)). Una matriz vacía NO baja el promedio: sin
+requisitos cargados el componente no existe y rige la fórmula 60/40 — no se
+penaliza a quien todavía no la levanta, coherente con que "sin levantar" no
+es "0% de cumplimiento legal".
+
 Para MOD·WZD no hace falta re-verificar la evidencia en cada cálculo:
 `complete_task` (sección [mod-wzd.md](mod-wzd.md)) ya impide cerrar una tarea
 sin evidencia aprobada, así que "cerrada" implica "evidenciada" por
@@ -53,6 +62,7 @@ aguja llaman a `refresh()` después de una mutación exitosa:
 - `WizardPage.tsx`: al instanciar, completar o reabrir una tarea.
 - `DocumentsPage.tsx`: al aprobar una versión — aprobar retroactivamente
   puede validar evidencia que ya estaba vinculada en SoA o el asistente.
+- `LegalPage.tsx`: al crear/editar requisitos o cambiar su calificación.
 
 `ComplianceMeter.tsx` no hace polling; si el cálculo cambia por una acción
 que esta plataforma no dispara desde el frontend (poco probable hoy), el

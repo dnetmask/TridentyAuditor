@@ -77,6 +77,18 @@ export function IconBook(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconScale(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <line x1="12" y1="3" x2="12" y2="21" />
+      <line x1="5" y1="6" x2="19" y2="6" />
+      <path d="M5 6 2.5 12a2.8 2.8 0 0 0 5 0Z" />
+      <path d="M19 6l-2.5 6a2.8 2.8 0 0 0 5 0Z" />
+      <line x1="9" y1="21" x2="15" y2="21" />
+    </Icon>
+  );
+}
+
 export function IconUsers(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

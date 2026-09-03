@@ -9,6 +9,7 @@ import {
   IconAudit,
   IconDocuments,
   IconBook,
+  IconScale,
   IconUsers,
   IconBuilding,
   IconChevronLeft,
@@ -60,6 +61,7 @@ export function Layout() {
         { to: "/soa", label: "SoA", icon: <IconChecklist /> },
         { to: "/auditoria", label: "Auditoría", icon: <IconAudit /> },
         { to: "/documentos", label: "Documentos", icon: <IconDocuments /> },
+        { to: "/requisitos-legales", label: "Requisitos legales", icon: <IconScale /> },
         { to: "/marco-normativo", label: "Marco normativo", icon: <IconBook /> },
         ...(session.role === "tenant_admin"
           ? [{ to: "/usuarios", label: "Usuarios", icon: <IconUsers /> }]
