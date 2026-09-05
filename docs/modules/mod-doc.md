@@ -1,6 +1,6 @@
 # MOD·DOC — Control documental
 
-**Fases:** 1 y 2 · **Estado:** ✅ Implementado (`backend/app/documents`, `backend/app/areas`)
+**Fases:** 1, 2 y 3 · **Estado:** ✅ Implementado (`backend/app/documents`, `backend/app/areas`)
 
 Versionado y flujo de aprobación de documentos, con RLS por tenant. Base
 sobre la que cuelga la evidencia de los demás módulos (MOD·RSK, MOD·SOA,
@@ -123,6 +123,38 @@ por separado de todas formas.
   intencional: sección 06 del documento de arquitectura exige evidencia
   inmutable una vez publicada.
 
+## Copias controladas al servir (Fase 3)
+
+Toda copia que sale de la plataforma es, por definición, **no controlada** —
+la controlada es la que vive aquí. Por eso los **PDF se estampan en el
+momento de servirlos** (`app/documents/stamping.py`, pypdf + reportlab):
+
+- **Pie en todas las páginas**: `Copia no controlada · CÓDIGO vN ·
+  descargada el FECHA por USUARIO` — trazabilidad de la copia impresa.
+- **Marca de agua diagonal** cuando lo servido NO es la copia vigente:
+  `BORRADOR`, `EN REVISIÓN`, `OBSOLETO`, o `DEROGADO` si el documento
+  entero fue retirado — ISO 7.5.3.d exige prevenir el uso de información
+  obsoleta, y sin esto un PDF obsoleto descargado ayer es indistinguible
+  del vigente.
+
+La verificación SHA-256 corre sobre el binario original ANTES de estampar
+(el sello nunca enmascara un archivo adulterado, y el hash registrado sigue
+correspondiendo al original almacenado). El sello es defensa documental, no
+frontera de seguridad: un PDF no procesable (corrupto, cifrado) se sirve
+original en vez de romper la descarga, y los formatos no-PDF (Office,
+imágenes, texto) salen tal cual.
+
+**Botón Ver**: `?inline=true` en el endpoint de archivo lo entrega con
+`Content-Disposition: inline` — el frontend lo abre en una pestaña nueva
+para leerlo sin descargarlo (PDF, imágenes y texto; Office siempre se
+descarga). Ambas vías quedan en la bitácora (`documents.downloaded`, con
+"vista inline" cuando aplica).
+
+**Panel Elaboró / Revisó / Aprobó**: cada versión aprobada u obsoleta
+muestra los tres nombres — elaboró (`created_by`), revisó (firma del
+gerente de área) y aprobó (firma de seguridad de la información; en
+versiones anteriores a la Fase 2, el `approved_by` de un solo paso).
+
 ## Endpoints
 
 Todos requieren `Authorization: Bearer <jwt>`.
@@ -136,7 +168,7 @@ Todos requieren `Authorization: Bearer <jwt>`.
 | PATCH | `/api/v1/documents/{id}` | Edita metadatos (título, área, `control_ids` como reemplazo del conjunto, origen/fuente, fechas, frecuencia, retención). Bloqueado si el documento está derogado |
 | POST | `/api/v1/documents/{id}/retire` | Deroga el documento con motivo obligatorio (rol revisor) |
 | POST | `/api/v1/documents/{id}/versions` | `multipart/form-data` — nueva versión en `draft` con `change_summary` obligatorio |
-| GET | `/api/v1/documents/{id}/versions/{n}/file` | Descarga el binario (verifica SHA-256 antes de servir) |
+| GET | `/api/v1/documents/{id}/versions/{n}/file` | Sirve el binario (verifica SHA-256; PDF sale estampado). `?inline=true` para leer en el navegador (botón Ver) |
 | POST | `/api/v1/documents/{id}/versions/{n}/submit` | `draft` → `in_review` |
 | POST | `/api/v1/documents/{id}/versions/{n}/reject` | `in_review` → `draft`, con `reason` obligatorio; borra firmas parciales |
 | POST | `/api/v1/documents/{id}/versions/{n}/approve` | Firma el siguiente paso pendiente (gerente de área → seguridad); con la última firma pasa a `approved` y recalcula próxima revisión |
@@ -179,6 +211,5 @@ tipo, y gestión de áreas (crear/listar con gerente) desde la misma pantalla.
   visual en la pantalla; no envía correos) — Fase 3 de la ruta.
 - Migrar el binario de disco local a Object Storage S3-compatible con
   política WORM (ver "Almacenamiento del binario" arriba) — Fase S2.
-- Panel "elaboró / revisó / aprobó" con botón Ver inline y sello
-  OBSOLETO/copia no controlada en los PDF servidos — Fase 3 de la ruta
-  (las tres identidades ya existen: `created_by` + las dos firmas).
+- El sello aplica solo a PDF; estampar Office exigiría convertir a PDF al
+  servir (LibreOffice headless) — candidato a Fase 5 si se necesita.

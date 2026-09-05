@@ -14,6 +14,10 @@ dependencies = [
     "pyjwt>=2.8,<3.0",
     "bcrypt>=4.1,<5.0",
     "python-multipart>=0.0.9,<1.0",
+    # Sello de copias controladas (Fase 3): pie "copia no controlada" y
+    # marca de agua OBSOLETO/BORRADOR estampados al servir PDFs.
+    "pypdf>=4.2,<7.0",
+    "reportlab>=4.1,<6.0",
 ]
 
 [project.optional-dependencies]

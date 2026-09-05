@@ -27,6 +27,18 @@ test("ciclo completo de un documento: crear → enviar a revisión → aprobar",
   await page.click('button:has-text("Enviar a revisión")');
   await page.click('button:has-text("Aprobar")');
   await expect(page.locator(".badge-approved").first()).toBeVisible();
+
+  // Panel de copia controlada (Fase 3): elaboró/revisó/aprobó visibles.
+  await expect(page.getByText("Elaboró:")).toBeVisible();
+  await expect(page.getByText("Aprobó:")).toBeVisible();
+
+  // Botón Ver: abre el archivo en una pestaña nueva sin descargarlo.
+  const [popup] = await Promise.all([
+    page.waitForEvent("popup"),
+    page.click('button:has-text("Ver")'),
+  ]);
+  await popup.waitForLoadState();
+  expect(popup.url()).toContain("blob:");
 });
 
 test("un documento con área exige dos firmas: gerente de área y seguridad", async ({ page }) => {
@@ -58,13 +70,16 @@ test("un documento con área exige dos firmas: gerente de área y seguridad", as
   await row.click();
   await page.click('button:has-text("Enviar a revisión")');
 
-  // Firma 1 (gerente de área — el Admin puede firmar en su lugar): la
-  // versión sigue en revisión y el checklist muestra el paso pendiente.
+  // Firma 1 (gerente de área — el Admin puede firmar en su lugar): esperar a
+  // que la firma quede REGISTRADA (✓) — no solo el texto "pendiente", que
+  // existe desde antes — para que el click siguiente no caiga en medio del
+  // re-render del panel.
   await page.click('button:has-text("Firmar como gerente de área")');
+  await expect(page.locator(".approval-step-done")).toContainText("Gerente de área");
   await expect(page.getByText("Seguridad de la información: pendiente")).toBeVisible();
   await expect(page.locator(".badge-in_review").first()).toBeVisible();
 
   // Firma 2 (seguridad de la información) publica.
-  await page.click('button:has-text("Aprobar")');
+  await page.getByRole("button", { name: "Aprobar", exact: true }).click();
   await expect(page.locator(".badge-approved").first()).toBeVisible();
 });

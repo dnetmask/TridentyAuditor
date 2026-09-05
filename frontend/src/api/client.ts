@@ -90,9 +90,13 @@ export async function downloadDocumentVersionFile(
   token: string,
   documentId: string,
   versionNumber: number,
+  // inline=true pide el archivo para LEER (botón Ver): mismo binario
+  // estampado, con Content-Disposition inline en vez de attachment.
+  inline = false,
 ): Promise<{ blob: Blob; filename: string }> {
+  const suffix = inline ? "?inline=true" : "";
   const res = await fetch(
-    `${API_BASE_URL}/api/v1/documents/${documentId}/versions/${versionNumber}/file`,
+    `${API_BASE_URL}/api/v1/documents/${documentId}/versions/${versionNumber}/file${suffix}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) {
@@ -302,6 +306,9 @@ export const api = {
 
   downloadVersionFile: (token: string, documentId: string, versionNumber: number) =>
     downloadDocumentVersionFile(token, documentId, versionNumber),
+
+  viewVersionFile: (token: string, documentId: string, versionNumber: number) =>
+    downloadDocumentVersionFile(token, documentId, versionNumber, true),
 
   submitForReview: (token: string, documentId: string, versionNumber: number) =>
     request<import("./types").DocumentVersion>(

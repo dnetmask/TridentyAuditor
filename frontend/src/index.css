@@ -1031,3 +1031,17 @@ form.stacked {
 .approval-step-done {
   color: var(--risk-low-fg);
 }
+
+/* --- Fase 3: panel de copia controlada --- */
+.copy-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+.copy-control strong {
+  color: var(--color-text);
+  font-weight: 600;
+}

@@ -149,6 +149,21 @@ export function DocumentsPage() {
     }
   }
 
+  // Botón Ver: el mismo binario estampado, abierto para leer en una pestaña
+  // nueva sin descargarlo.
+  async function handleView(documentId: string, versionNumber: number) {
+    setError(null);
+    try {
+      const { blob } = await api.viewVersionFile(token, documentId, versionNumber);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      // Darle tiempo a la pestaña de cargar el blob antes de liberarlo.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo abrir el archivo");
+    }
+  }
+
   const filtered = useMemo(() => {
     if (documents === null) return null;
     const text = search.trim().toLowerCase();
@@ -290,6 +305,7 @@ export function DocumentsPage() {
                             busy={busy}
                             onAction={runAction}
                             onDownload={handleDownload}
+                            onView={handleView}
                             onEdit={() => setEditDoc(doc)}
                             onRetire={() => setReason({ kind: "retire", docId: doc.id, docCode: doc.code })}
                             onReject={(versionNumber) =>
@@ -384,11 +400,51 @@ function nextPendingStep(doc: DocumentDetail, version: DocumentVersion): Approva
   return requiredSteps(doc).find((step) => !signed.has(step)) ?? null;
 }
 
+// El navegador puede mostrar estos tipos directo (botón Ver); Office se
+// descarga siempre.
+function isViewable(contentType: string | null): boolean {
+  if (!contentType) return false;
+  return (
+    contentType === "application/pdf" ||
+    contentType.startsWith("image/") ||
+    contentType.startsWith("text/")
+  );
+}
+
+// Panel de copia controlada: los tres nombres que el auditor pide ver.
+// Elaboró = quien subió la versión; Revisó = firma del gerente de área
+// (Fase 2); Aprobó = firma de seguridad de la información (o el approved_by
+// de un solo paso en versiones anteriores a la Fase 2).
+function CopyControlLine({ version }: { version: DocumentVersion }) {
+  if (version.status !== "approved" && version.status !== "obsolete") return null;
+  const reviewed = version.approvals.find((a) => a.step === "area_manager");
+  const approved = version.approvals.find((a) => a.step === "security");
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString();
+  return (
+    <span className="copy-control">
+      <span>
+        <strong>Elaboró:</strong> {version.created_by} · {fmt(version.created_at)}
+      </span>
+      <span>
+        <strong>Revisó:</strong>{" "}
+        {reviewed ? `${reviewed.signed_by} · ${fmt(reviewed.signed_at)}` : "—"}
+      </span>
+      <span>
+        <strong>Aprobó:</strong>{" "}
+        {approved
+          ? `${approved.signed_by} · ${fmt(approved.signed_at)}`
+          : version.approved_by
+            ? `${version.approved_by}${version.approved_at ? ` · ${fmt(version.approved_at)}` : ""}`
+            : "—"}
+      </span>
+    </span>
+  );
+}
+
 function ApprovalSteps({ doc, version }: { doc: DocumentDetail; version: DocumentVersion }) {
-  // Solo tiene sentido mostrar el checklist mientras se firma, o cuando la
-  // versión aprobada tiene firmas registradas (las anteriores a la Fase 2
-  // solo traen approved_by y ya se muestra arriba).
-  if (version.status !== "in_review" && version.approvals.length === 0) return null;
+  // El checklist aplica mientras se firma; una vez aprobada, la línea de
+  // copia controlada (Elaboró/Revisó/Aprobó) toma su lugar.
+  if (version.status !== "in_review") return null;
   const signedByStep = new Map(version.approvals.map((a) => [a.step, a]));
   return (
     <span className="approval-steps">
@@ -417,6 +473,7 @@ function DocumentDetailPanel({
   busy,
   onAction,
   onDownload,
+  onView,
   onEdit,
   onRetire,
   onReject,
@@ -429,6 +486,7 @@ function DocumentDetailPanel({
   busy: boolean;
   onAction: (action: () => Promise<unknown>) => Promise<void>;
   onDownload: (documentId: string, versionNumber: number) => void;
+  onView: (documentId: string, versionNumber: number) => void;
   onEdit: () => void;
   onRetire: () => void;
   onReject: (versionNumber: number) => void;
@@ -487,8 +545,7 @@ function DocumentDetailPanel({
             </span>
             <span className="muted">
               {v.original_filename ?? "sin archivo"}
-              {v.file_size != null ? ` (${formatFileSize(v.file_size)})` : ""} · creado por {v.created_by}
-              {v.approved_by ? ` · aprobado por ${v.approved_by}` : ""}
+              {v.file_size != null ? ` (${formatFileSize(v.file_size)})` : ""}
               {v.file_sha256 ? ` · sha256 ` : ""}
               {v.file_sha256 && <code title={v.file_sha256}>{v.file_sha256.slice(0, 12)}…</code>}
             </span>
@@ -498,9 +555,15 @@ function DocumentDetailPanel({
                 Rechazada por {v.rejected_by}: {v.rejection_reason}
               </span>
             )}
+            <CopyControlLine version={v} />
             <ApprovalSteps doc={doc} version={v} />
           </div>
           <div className="version-actions">
+            {v.original_filename && isViewable(v.content_type) && (
+              <button className="btn btn-secondary btn-sm" onClick={() => onView(doc.id, v.version_number)}>
+                Ver
+              </button>
+            )}
             {v.original_filename && (
               <button className="btn btn-secondary btn-sm" onClick={() => onDownload(doc.id, v.version_number)}>
                 Descargar

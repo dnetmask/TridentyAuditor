@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from app.documents.service import (
     UnknownControl,
     VersionNotFound,
 )
+from app.documents.stamping import stamp_pdf
 
 settings = get_settings()
 
@@ -256,17 +257,36 @@ async def create_new_version(
     return version
 
 
+# Marca de agua según el estado de lo servido: cualquier cosa que no sea la
+# copia vigente sale marcada (ISO 7.5.3.d — prevenir uso de info obsoleta).
+_WATERMARKS = {
+    "draft": "BORRADOR",
+    "in_review": "EN REVISIÓN",
+    "obsolete": "OBSOLETO",
+}
+
+
 @router.get("/{document_id}/versions/{version_number}/file")
 def download_version_file(
     document_id: uuid.UUID,
     version_number: int,
     request: Request,
+    inline: bool = False,
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(decode_tenant_token),
 ):
+    """Sirve el binario de la versión. ``?inline=true`` lo entrega para leer
+    en el navegador (botón Ver) en vez de forzar la descarga.
+
+    Los PDF salen estampados: pie de "copia no controlada" en toda página y
+    marca de agua diagonal si la versión no es la vigente o el documento
+    está derogado. La verificación SHA-256 corre sobre el original ANTES de
+    estampar — el sello nunca enmascara un binario adulterado.
+    """
     try:
         version, path = service.get_version_file(db, principal.tenant_id, document_id, version_number)
-    except VersionNotFound as exc:
+        document = service.get_document(db, principal.tenant_id, document_id)
+    except (DocumentNotFound, VersionNotFound) as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Versión no encontrada") from exc
     except FileMissing as exc:
         raise HTTPException(
@@ -287,13 +307,36 @@ def download_version_file(
         tenant_id=principal.tenant_id,
         entity_type="document",
         entity_id=document_id,
-        detail=f"versión {version_number}",
+        detail=f"versión {version_number}" + (" · vista inline" if inline else ""),
         ip=client_ip(request),
     )
+
+    media_type = version.content_type or "application/octet-stream"
+    filename = version.original_filename or f"{document_id}-v{version_number}"
+    disposition = "inline" if inline else "attachment"
+
+    if media_type == "application/pdf":
+        if document.retired_at is not None:
+            watermark = "DEROGADO"
+        else:
+            watermark = _WATERMARKS.get(version.status.value)
+        footer = (
+            f"Copia no controlada · {document.code} v{version.version_number} · "
+            f"descargada el {date.today().isoformat()} por {principal.email}"
+        )
+        content = stamp_pdf(path.read_bytes(), footer_text=footer, watermark=watermark)
+        safe_name = filename.replace('"', "")
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'{disposition}; filename="{safe_name}"'},
+        )
+
     return FileResponse(
         path,
-        media_type=version.content_type or "application/octet-stream",
-        filename=version.original_filename or f"{document_id}-v{version_number}",
+        media_type=media_type,
+        filename=filename,
+        content_disposition_type=disposition,
     )
 
 
