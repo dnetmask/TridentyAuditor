@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { NavLink, Outlet, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { ComplianceMeter } from "./ComplianceMeter";
+import { TridentMark, TridentyWordmark } from "./Brand";
 import {
   IconRoute,
   IconRisk,
@@ -16,6 +18,8 @@ import {
   IconBuilding,
   IconChevronLeft,
   IconLogout,
+  IconSun,
+  IconMoon,
 } from "./icons";
 import type { UserRole } from "../api/types";
 
@@ -32,6 +36,7 @@ type NavItem = { to: string; label: string; icon: ReactNode };
 
 export function Layout() {
   const { session, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
@@ -77,10 +82,12 @@ export function Layout() {
   return (
     <div className="app-shell">
       <aside className={`sidebar${collapsed ? " sidebar-collapsed" : ""}`}>
-        <NavLink to={homePath} className="sidebar-brand">
-          <img src="/logo.svg" alt="TridentyAuditor" className="sidebar-logo-full" />
-          <div className="sidebar-logo-mono">T</div>
-          <span className="sidebar-tagline">Gestión de cumplimiento (GRC)</span>
+        <NavLink to={homePath} className="sidebar-brand" title="TridentyAuditor">
+          <TridentMark className="sidebar-logomark" />
+          <span className="sidebar-brand-text">
+            <TridentyWordmark className="sidebar-wordmark" />
+            <span className="sidebar-tagline">Auditor · Gestión de cumplimiento</span>
+          </span>
         </NavLink>
 
         {!isSuperAdmin && session.tenantName && (
@@ -103,6 +110,16 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        <button
+          type="button"
+          className="sidebar-theme-toggle"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+        >
+          {theme === "dark" ? <IconSun /> : <IconMoon />}
+          <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>
+        </button>
 
         <button type="button" className="sidebar-collapse-toggle" onClick={toggleCollapsed}>
           <IconChevronLeft />

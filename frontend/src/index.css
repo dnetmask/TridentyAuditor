@@ -1,14 +1,25 @@
+/* Sistema de marca Tridenty: cian #5bc2e7 como identidad. En modo claro el
+   primario se oscurece para contraste; en oscuro se usa el cian brillante.
+   Modo claro por defecto — el modo oscuro se activa con data-theme="dark". */
 :root {
   --color-bg: #f6f7f5;
   --color-surface: #ffffff;
+  --color-surface-subtle: #fafbfa;
+  --color-surface-hover: #eef1f0;
   --color-border: #dfe3e0;
-  --color-text: #1a2421;
-  --color-text-muted: #5b6560;
-  --color-primary: #0f6e5f;
-  --color-primary-hover: #0b5548;
-  --color-primary-soft: #e3f2ee;
+  --color-text: #16202b;
+  --color-text-muted: #5b6673;
+
+  --color-brand: #5bc2e7;
+  --color-primary: #0e7490;
+  --color-primary-hover: #0b5f78;
+  --color-primary-soft: #e2f4fa;
+  --color-on-primary: #ffffff;
+  --color-primary-disabled: #b6dced;
+
   --color-danger: #b3261e;
   --color-danger-soft: #fbe9e7;
+  --color-danger-hover: #f5d5d1;
 
   --status-draft-bg: #eceff1;
   --status-draft-fg: #455a64;
@@ -34,6 +45,50 @@
 
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #0f1117;
+  --color-surface: #171a22;
+  --color-surface-subtle: #14171e;
+  --color-surface-hover: #1e222c;
+  --color-border: #2a2f3a;
+  --color-text: #e6ebf1;
+  --color-text-muted: #99a3b2;
+
+  --color-brand: #5bc2e7;
+  --color-primary: #5bc2e7;
+  --color-primary-hover: #7dd0ee;
+  --color-primary-soft: #12303a;
+  --color-on-primary: #06212b;
+  --color-primary-disabled: #2b3a44;
+
+  --color-danger: #f2938c;
+  --color-danger-soft: #3a1c18;
+  --color-danger-hover: #4a231e;
+
+  --status-draft-bg: #232833;
+  --status-draft-fg: #aeb7c2;
+  --status-in_review-bg: #3a2f11;
+  --status-in_review-fg: #f0c674;
+  --status-approved-bg: #12331f;
+  --status-approved-fg: #7fdd9b;
+  --status-obsolete-bg: #20242c;
+  --status-obsolete-fg: #8b93a0;
+
+  --risk-low-bg: #12331f;
+  --risk-low-fg: #7fdd9b;
+  --risk-medium-bg: #3a2f11;
+  --risk-medium-fg: #f0c674;
+  --risk-high-bg: #3a2515;
+  --risk-high-fg: #f2a375;
+  --risk-critical-bg: #3a1a18;
+  --risk-critical-fg: #f2938c;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
 }
 
 * {
@@ -86,32 +141,33 @@ a {
 
 .sidebar-brand {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.4rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
   text-decoration: none;
   padding: 1.1rem 1rem;
   border-bottom: 1px solid var(--color-border);
 }
 
-.sidebar-logo-full {
-  height: 22px;
+.sidebar-logomark {
+  height: 30px;
   width: auto;
-  max-width: 100%;
+  flex-shrink: 0;
   display: block;
 }
 
-.sidebar-logo-mono {
-  display: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: #fff;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.sidebar-wordmark {
+  height: 15px;
+  width: auto;
+  display: block;
+  color: var(--color-text);
 }
 
 .sidebar-tagline {
@@ -122,16 +178,12 @@ a {
 }
 
 .sidebar.sidebar-collapsed .sidebar-brand {
-  align-items: center;
+  justify-content: center;
+  padding: 1.1rem 0;
 }
 
-.sidebar.sidebar-collapsed .sidebar-logo-full,
-.sidebar.sidebar-collapsed .sidebar-tagline {
+.sidebar.sidebar-collapsed .sidebar-brand-text {
   display: none;
-}
-
-.sidebar.sidebar-collapsed .sidebar-logo-mono {
-  display: flex;
 }
 
 .sidebar-tenant {
@@ -409,13 +461,14 @@ main.content {
 
 .btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 .btn-primary:hover {
   background: var(--color-primary-hover);
 }
 .btn-primary:disabled {
-  background: #a9c7c0;
+  background: var(--color-primary-disabled);
+  color: var(--color-on-primary);
   cursor: not-allowed;
 }
 
@@ -425,7 +478,7 @@ main.content {
   border-color: var(--color-border);
 }
 .btn-secondary:hover {
-  background: #f0f2f0;
+  background: var(--color-surface-hover);
 }
 
 .btn-danger {
@@ -433,7 +486,7 @@ main.content {
   color: var(--color-danger);
 }
 .btn-danger:hover {
-  background: #f5d5d1;
+  background: var(--color-danger-hover);
 }
 
 .btn-sm {
@@ -470,7 +523,7 @@ table.data-table {
   cursor: pointer;
 }
 .data-table tbody tr.clickable:hover {
-  background: #fafbfa;
+  background: var(--color-surface-subtle);
 }
 
 .badge {
@@ -515,7 +568,7 @@ table.data-table {
 }
 
 .doc-detail-panel {
-  background: #fafbfa;
+  background: var(--color-surface-subtle);
 }
 
 form.stacked {
@@ -617,7 +670,7 @@ form.stacked {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #0f6e5f 0%, #123832 55%, #101a17 100%);
+  background: linear-gradient(160deg, #0b3a4a 0%, #0f1117 55%, #080a0f 100%);
   padding: 1.5rem;
 }
 
@@ -666,7 +719,7 @@ form.stacked {
   margin-top: 1.5rem;
   font-size: 0.78rem;
   color: var(--color-text-muted);
-  background: #f6f7f5;
+  background: var(--color-surface-subtle);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
 }
@@ -704,7 +757,7 @@ form.stacked {
   display: flex;
   gap: 0.75rem;
   padding: 0.6rem 1.1rem 0.6rem 2.3rem;
-  border-bottom: 1px solid #f0f2f0;
+  border-bottom: 1px solid var(--color-border);
   font-size: 0.88rem;
 }
 
@@ -772,7 +825,7 @@ form.stacked {
 
 .wizard-step-current .wizard-step-number {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .wizard-step-complete .wizard-step-number {
@@ -860,7 +913,7 @@ form.stacked {
 .task-check-done {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .task-body {
@@ -928,7 +981,7 @@ form.stacked {
 .badge-risk-critical { background: var(--risk-critical-bg); color: var(--risk-critical-fg); }
 
 .risk-detail-panel {
-  background: #fafbfa;
+  background: var(--color-surface-subtle);
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
@@ -1061,7 +1114,7 @@ form.stacked {
   min-width: 140px;
   padding: 1rem 1.25rem;
   border-radius: 14px;
-  background: var(--teal-soft, #e3f2ee);
+  background: var(--color-primary-soft);
 }
 .dashboard-gauge-value {
   font-size: 2.4rem;
@@ -1265,17 +1318,17 @@ form.stacked {
   flex: 1;
   min-width: 60px;
   height: 8px;
-  background: var(--border, #e2e6ea);
+  background: var(--color-border);
   border-radius: 999px;
   overflow: hidden;
 }
 .capa-progress-fill {
   height: 100%;
-  background: var(--brand, #0f6e5f);
+  background: var(--color-primary);
   border-radius: 999px;
   transition: width 0.2s ease;
 }
-.capa-progress-label { font-size: 0.75rem; color: var(--muted, #5b6560); min-width: 2.4rem; }
+.capa-progress-label { font-size: 0.75rem; color: var(--color-text-muted); min-width: 2.4rem; }
 
 /* --- Higiene documental (COMP-C) --- */
 .hygiene-grid {
@@ -1284,20 +1337,20 @@ form.stacked {
   gap: 0.75rem;
 }
 .hygiene-cell {
-  border: 1px solid var(--border, #e2e6ea);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 0.8rem 0.9rem;
-  background: var(--surface, #fff);
+  background: var(--color-surface);
 }
 .hygiene-cell .num { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
-.hygiene-cell .lbl { font-size: 0.76rem; color: var(--muted, #5b6560); }
-.hygiene-cell.warn .num { color: #b45309; }
-.hygiene-cell.bad .num { color: #b91c1c; }
-.hygiene-cell.good .num { color: #0f6e5f; }
+.hygiene-cell .lbl { font-size: 0.76rem; color: var(--color-text-muted); }
+.hygiene-cell.warn .num { color: var(--risk-medium-fg); }
+.hygiene-cell.bad .num { color: var(--color-danger); }
+.hygiene-cell.good .num { color: var(--color-primary); }
 
 /* --- Verificación de integridad (COMP-D) --- */
 .integrity-box {
-  border: 1px solid var(--border, #e2e6ea);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 0.9rem 1rem;
   margin-top: 0.75rem;
@@ -1306,19 +1359,19 @@ form.stacked {
   width: 100%;
 }
 .integrity-verdict { font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
-.integrity-verdict.ok { color: #0f6e5f; }
-.integrity-verdict.bad { color: #b91c1c; }
+.integrity-verdict.ok { color: var(--status-approved-fg); }
+.integrity-verdict.bad { color: var(--color-danger); }
 .integrity-hash {
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 0.72rem;
   word-break: break-all;
-  color: var(--muted, #5b6560);
+  color: var(--color-text-muted);
 }
 
 /* --- Banner de contraste guiado vs checklist (COMP-E) --- */
 .guided-banner {
-  border: 1px solid color-mix(in srgb, var(--brand, #0f6e5f) 30%, transparent);
-  background: color-mix(in srgb, var(--brand, #0f6e5f) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   border-radius: 12px;
   padding: 0.9rem 1.1rem;
   margin-bottom: 1.25rem;
@@ -1328,4 +1381,51 @@ form.stacked {
 }
 .guided-banner .gb-icon { font-size: 1.2rem; line-height: 1.4; }
 .guided-banner .gb-title { font-weight: 700; margin-bottom: 0.15rem; }
-.guided-banner .gb-text { font-size: 0.86rem; color: var(--muted, #5b6560); }
+.guided-banner .gb-text { font-size: 0.86rem; color: var(--color-text-muted); }
+
+/* --- Toggle de modo claro/oscuro --- */
+.sidebar-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0.6rem 0.25rem;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.sidebar-theme-toggle:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.sidebar-theme-toggle svg {
+  flex-shrink: 0;
+}
+.sidebar.sidebar-collapsed .sidebar-theme-toggle {
+  justify-content: center;
+  padding: 0.5rem;
+}
+.sidebar.sidebar-collapsed .sidebar-theme-toggle span {
+  display: none;
+}
+
+/* --- Marca en el login --- */
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+.login-mark {
+  height: 42px;
+  width: auto;
+  flex-shrink: 0;
+}
+.login-wordmark {
+  height: 22px;
+  width: auto;
+  color: var(--color-text);
+}

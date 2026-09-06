@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ComplianceProvider } from "./context/ComplianceContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
@@ -31,9 +32,10 @@ function RequireRole({ roles, children }: { roles: UserRole[]; children: React.R
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ComplianceProvider>
-        <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <ComplianceProvider>
+          <BrowserRouter>
           <Routes>
             <Route path="/entrar" element={<LoginPage />} />
             <Route element={<Layout />}>
@@ -129,8 +131,9 @@ export default function App() {
             <Route path="/" element={<RoleHome />} />
             <Route path="*" element={<RoleHome />} />
           </Routes>
-        </BrowserRouter>
-      </ComplianceProvider>
-    </AuthProvider>
+          </BrowserRouter>
+        </ComplianceProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
