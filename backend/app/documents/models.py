@@ -252,6 +252,11 @@ class DocumentVersion(Base):
     # solo por las versiones anteriores a la Fase 1.
     file_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     change_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Texto extraído del binario para la búsqueda de contenido (Fase 5b). El
+    # tsvector (columna generada + índice GIN) lo mantiene Postgres; aquí solo
+    # guardamos el texto plano de origen. Nullable: archivos sin texto
+    # (imágenes, PDF escaneado) simplemente no se indexan.
+    content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Rechazo con rastro: quién, cuándo y por qué — sin esto el control de
@@ -300,3 +305,29 @@ class DocumentAcknowledgment(Base):
     assigned_by: Mapped[str] = mapped_column(String(255), nullable=False)
     assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DocumentTemplate(Base):
+    """Plantilla de documento del tenant (Fase 5b).
+
+    Un archivo base (portada, encabezado con código/versión) desde el cual se
+    crean documentos nuevos, estandarizando el formato del SGSI. No entra al
+    ciclo de aprobación ni cuenta como evidencia — es solo el punto de
+    partida: al crear un documento con ``template_id``, su versión 1 se siembra
+    con el binario de la plantilla.
+    """
+
+    __tablename__ = "document_templates"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_document_template_tenant_name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_type: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
+    storage_ref: Mapped[str] = mapped_column(String(500), nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -107,6 +107,18 @@ export interface Acknowledgment {
   acknowledged_at: string | null;
 }
 
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  document_type: string;
+  original_filename: string | null;
+  content_type: string | null;
+  file_size: number | null;
+  created_by: string;
+  created_at: string;
+}
+
 export interface AcknowledgmentSummary {
   total: number;
   acknowledged: number;

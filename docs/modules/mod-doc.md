@@ -175,6 +175,28 @@ activo, `dispose` se rechaza aunque venza la retención. La disposición final
 (`archive`/`destroy`) exige acta (motivo + quién + cuándo) y no borra el
 registro — la disposición en sí es evidencia.
 
+## Plantillas y búsqueda de contenido (Fase 5b)
+
+**Plantillas de documentos** — archivos base del tenant (una portada, un
+encabezado con espacio para código/versión, un formato de acta). Al crear un
+documento se puede **partir de una plantilla** en vez de subir un archivo
+desde cero: el binario de la plantilla se copia como versión 1 del nuevo
+documento. Las plantillas viven bajo el `storage_ref`
+`{tenant}/templates/{id}`, aisladas por RLS como todo lo demás, y su nombre
+es único por tenant. Crearlas/borrarlas es rol revisor.
+
+**Búsqueda de texto completo** — al subir cada versión, `textextract.py`
+saca el texto plano del binario (PDF vía `pypdf`, DOCX vía `python-docx`,
+texto plano por decodificación; los cifrados se saltan sin romper la subida)
+y lo guarda en `document_versions.content_text`. Una **columna generada**
+`content_tsv` (`to_tsvector('spanish', content_text)`, `STORED`) con índice
+**GIN** convierte eso en búsqueda indexada: `GET /documents/search?q=` usa
+`websearch_to_tsquery('spanish', …)` y ordena por `ts_rank`, así que el
+auditor encuentra un documento por una frase que solo aparece en el cuerpo
+(p. ej. "continuidad del negocio") aunque no esté en el título ni el código.
+La extracción es best-effort — si falla, el documento se sube igual, solo
+sin capa de texto buscable. La búsqueda excluye derogados y dispuestos.
+
 ## Endpoints
 
 Todos requieren `Authorization: Bearer <jwt>`.
@@ -182,7 +204,12 @@ Todos requieren `Authorization: Bearer <jwt>`.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/v1/documents/next-code?document_type=` | Sugiere el siguiente código consecutivo por tipo |
-| POST | `/api/v1/documents` | `multipart/form-data` — crea documento + versión 1 en `draft` (código, título, tipo, área, controles, origen, fechas, retención + archivo) |
+| GET | `/api/v1/documents/search?q=` | Búsqueda de texto completo (`tsvector` en español) sobre el contenido de las versiones, ordenada por relevancia |
+| GET | `/api/v1/documents/templates` | Lista las plantillas base del tenant |
+| POST | `/api/v1/documents/templates` | `multipart/form-data` — sube una plantilla (nombre único, tipo sugerido + archivo). Rol revisor |
+| GET | `/api/v1/documents/templates/{id}/file` | Descarga el binario de la plantilla |
+| DELETE | `/api/v1/documents/templates/{id}` | Elimina una plantilla. Rol revisor |
+| POST | `/api/v1/documents` | `multipart/form-data` — crea documento + versión 1 en `draft` (código, título, tipo, área, controles, origen, fechas, retención + archivo **o** `template_id` para partir de una plantilla) |
 | GET | `/api/v1/documents` | Lista documentos del tenant (incluye derogados — el filtrado de vigencia es del cliente) |
 | GET | `/api/v1/documents/{id}` | Detalle con área, controles y todas sus versiones |
 | PATCH | `/api/v1/documents/{id}` | Edita metadatos (título, área, `control_ids` como reemplazo del conjunto, origen/fuente, fechas, frecuencia, retención). Bloqueado si el documento está derogado |
@@ -228,11 +255,14 @@ derogados), columna de próxima revisión con semáforo (vencida en rojo,
 firma según quién es el usuario (gerente del área o Admin), edición de
 metadatos, derogación con motivo, sugerencia automática de código al elegir
 tipo, y gestión de áreas (crear/listar con gerente) desde la misma pantalla.
+Suma un **buscador de contenido** (barra "Buscar dentro del contenido" que
+consulta el índice `tsvector` y muestra "N resultados por contenido"), un
+gestor de **plantillas** (subir/listar/borrar) y un selector "Partir de una
+plantilla" en el modal de nuevo documento (el archivo se vuelve opcional
+cuando se elige plantilla).
 
 ## Pendiente
 
-- **Plantillas de documentos** y **búsqueda de texto completo** (extracción de
-  PDF/DOCX + `tsvector`) — cierre de la Fase 5 (segunda tanda).
 - Recordatorios/notificaciones de revisión, disposición y acuses pendientes
   por correo (hoy todo es visual: semáforo, banner "obligatorios sin leer").
 - Migrar el binario de disco local a Object Storage S3-compatible con

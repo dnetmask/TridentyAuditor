@@ -132,6 +132,20 @@ class LegalHoldRequest(BaseModel):
     hold: bool
 
 
+class TemplateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    description: str | None
+    document_type: str
+    original_filename: str | None
+    content_type: str | None
+    file_size: int | None
+    created_by: str
+    created_at: datetime
+
+
 class DocumentUpdate(BaseModel):
     """PATCH de metadatos — el ``code`` es identidad y no se edita.
 

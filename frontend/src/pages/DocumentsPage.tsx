@@ -13,6 +13,7 @@ import type {
   DocumentControl,
   DocumentDetail,
   DocumentOrigin,
+  DocumentTemplate,
   DocumentVersion,
 } from "../api/types";
 
@@ -88,6 +89,11 @@ export function DocumentsPage() {
   const [controls, setControls] = useState<DocumentControl[]>([]);
   const [directory, setDirectory] = useState<DirectoryUser[]>([]);
   const [myPending, setMyPending] = useState<Acknowledgment[]>([]);
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  // Búsqueda de contenido (Fase 5b): cuando hay resultados, reemplazan la lista.
+  const [contentQuery, setContentQuery] = useState("");
+  const [contentResults, setContentResults] = useState<DocumentDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -117,10 +123,25 @@ export function DocumentsPage() {
     }
   }
 
+  async function runContentSearch() {
+    const q = contentQuery.trim();
+    if (!q) {
+      setContentResults(null);
+      return;
+    }
+    setError(null);
+    try {
+      setContentResults(await api.searchDocuments(token, q));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "La búsqueda falló");
+    }
+  }
+
   useEffect(() => {
     reload();
     api.listAreas(token).then(setAreas).catch(() => {});
     api.directory(token).then(setDirectory).catch(() => {});
+    api.listTemplates(token).then(setTemplates).catch(() => {});
     if (session!.frameworkCode) {
       api
         .getFramework(session!.frameworkCode)
@@ -178,6 +199,10 @@ export function DocumentsPage() {
     });
   }, [documents, search, filterType, filterStatus, filterArea, filterVigencia]);
 
+  // La búsqueda por contenido (Fase 5b) reemplaza la lista filtrada mientras
+  // esté activa; sin ella, se muestra el filtrado local del cliente.
+  const rows = contentResults ?? filtered;
+
   return (
     <div>
       <div className="page-header">
@@ -191,6 +216,11 @@ export function DocumentsPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
+          {canWrite && (
+            <button className="btn btn-secondary" onClick={() => setShowTemplates(true)}>
+              Plantillas
+            </button>
+          )}
           {canReview && (
             <button className="btn btn-secondary" onClick={() => setShowAreas(true)}>
               Áreas
@@ -230,7 +260,42 @@ export function DocumentsPage() {
       )}
 
       <div className="card">
-        <div className="filter-bar">
+        <form
+          className="content-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            runContentSearch();
+          }}
+        >
+          <input
+            type="search"
+            placeholder="Buscar dentro del contenido de los documentos…"
+            value={contentQuery}
+            onChange={(e) => setContentQuery(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary btn-sm">Buscar en contenido</button>
+          {contentResults !== null && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setContentQuery("");
+                setContentResults(null);
+              }}
+            >
+              Limpiar
+            </button>
+          )}
+        </form>
+
+        {contentResults !== null && (
+          <div className="content-search-note">
+            {contentResults.length} resultado{contentResults.length === 1 ? "" : "s"} por contenido para
+            “{contentQuery.trim()}”.
+          </div>
+        )}
+
+        <div className="filter-bar" hidden={contentResults !== null}>
           <input
             type="search"
             placeholder="Buscar código o título…"
@@ -267,13 +332,15 @@ export function DocumentsPage() {
           </select>
         </div>
 
-        {filtered === null ? (
+        {rows === null ? (
           <div className="empty-state">Cargando…</div>
-        ) : filtered.length === 0 ? (
+        ) : rows.length === 0 ? (
           <div className="empty-state">
-            {documents && documents.length > 0
-              ? "Ningún documento coincide con los filtros."
-              : "Todavía no hay documentos en este tenant."}
+            {contentResults !== null
+              ? "Ningún documento contiene ese texto."
+              : documents && documents.length > 0
+                ? "Ningún documento coincide con los filtros."
+                : "Todavía no hay documentos en este tenant."}
           </div>
         ) : (
           <table className="data-table">
@@ -288,7 +355,7 @@ export function DocumentsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((doc) => {
+              {rows.map((doc) => {
                 const current = currentVersion(doc);
                 const isOpen = expandedId === doc.id;
                 return (
@@ -354,6 +421,7 @@ export function DocumentsPage() {
           token={token}
           areas={areas}
           controls={controls}
+          templates={templates}
           onClose={() => setShowCreate(false)}
           onSaved={async () => {
             setShowCreate(false);
@@ -367,6 +435,7 @@ export function DocumentsPage() {
           token={token}
           areas={areas}
           controls={controls}
+          templates={templates}
           existing={editDoc}
           onClose={() => setEditDoc(null)}
           onSaved={async () => {
@@ -382,6 +451,15 @@ export function DocumentsPage() {
           areas={areas}
           onChanged={() => api.listAreas(token).then(setAreas).catch(() => {})}
           onClose={() => setShowAreas(false)}
+        />
+      )}
+
+      {showTemplates && (
+        <TemplatesModal
+          token={token}
+          templates={templates}
+          onChanged={() => api.listTemplates(token).then(setTemplates).catch(() => {})}
+          onClose={() => setShowTemplates(false)}
         />
       )}
 
@@ -728,6 +806,7 @@ function DocumentFormModal({
   token,
   areas,
   controls,
+  templates,
   existing,
   onClose,
   onSaved,
@@ -735,6 +814,7 @@ function DocumentFormModal({
   token: string;
   areas: Area[];
   controls: DocumentControl[];
+  templates: DocumentTemplate[];
   existing?: DocumentDetail;
   onClose: () => void;
   onSaved: () => void;
@@ -745,6 +825,7 @@ function DocumentFormModal({
   const [title, setTitle] = useState(existing?.title ?? "");
   const [documentType, setDocumentType] = useState(existing?.document_type ?? "policy");
   const [file, setFile] = useState<File | null>(null);
+  const [templateId, setTemplateId] = useState("");
   const [retentionMonths, setRetentionMonths] = useState(existing?.retention_months?.toString() ?? "");
   const [areaId, setAreaId] = useState(existing?.area?.id ?? "");
   const [implementationDate, setImplementationDate] = useState(existing?.implementation_date ?? "");
@@ -774,8 +855,8 @@ function DocumentFormModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!isEdit && !file) {
-      setError("Selecciona un archivo para adjuntar");
+    if (!isEdit && !file && !templateId) {
+      setError("Adjunta un archivo o elige una plantilla");
       return;
     }
     setError(null);
@@ -796,7 +877,12 @@ function DocumentFormModal({
       if (isEdit) {
         await api.updateDocument(token, existing.id, shared);
       } else {
-        await api.createDocument(token, { code, file: file!, ...shared });
+        await api.createDocument(token, {
+          code,
+          file: file ?? undefined,
+          template_id: templateId || undefined,
+          ...shared,
+        });
       }
       onSaved();
     } catch (err) {
@@ -845,7 +931,22 @@ function DocumentFormModal({
               <div className="evidence-hint" style={{ marginTop: "0.3rem" }}>{DOCUMENT_TYPE_HINT[documentType]}</div>
             )}
           </div>
-          {!isEdit && (
+          {!isEdit && templates.length > 0 && (
+            <div className="field">
+              <label htmlFor="doc-template">Partir de una plantilla (opcional)</label>
+              <select
+                id="doc-template"
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+              >
+                <option value="">— sin plantilla, adjunto archivo —</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {!isEdit && !templateId && (
             <div className="field">
               <label htmlFor="file">Archivo</label>
               <input id="file" type="file" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -1129,6 +1230,105 @@ function AreasModal({
         <div className="modal-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TemplatesModal({
+  token,
+  templates,
+  onChanged,
+  onClose,
+}: {
+  token: string;
+  templates: DocumentTemplate[];
+  onChanged: () => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [documentType, setDocumentType] = useState("policy");
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "La operación falló");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Plantillas de documentos</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Archivos base del tenant (portada, encabezado con código/versión). Al crear un
+          documento puedes partir de una plantilla en vez de subir un archivo desde cero.
+        </p>
+        {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
+
+        {templates.length === 0 ? (
+          <div className="empty-state">Todavía no hay plantillas.</div>
+        ) : (
+          <div className="stacked" style={{ marginBottom: "1rem" }}>
+            {templates.map((t) => (
+              <div key={t.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <strong style={{ flex: 1 }}>{t.name}</strong>
+                <span className="muted">{DOCUMENT_TYPES.find((d) => d.value === t.document_type)?.label ?? t.document_type}</span>
+                <button
+                  className="btn btn-danger btn-sm"
+                  disabled={busy}
+                  onClick={() => run(() => api.deleteTemplate(token, t.id))}
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form
+          className="stacked"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!name.trim() || !file) return;
+            run(() => api.uploadTemplate(token, { name: name.trim(), document_type: documentType, file })).then(() => {
+              setName("");
+              setFile(null);
+            });
+          }}
+        >
+          <div className="field">
+            <label htmlFor="tpl-name">Nueva plantilla</label>
+            <input id="tpl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="ej. Plantilla de política" />
+          </div>
+          <div className="field">
+            <label htmlFor="tpl-type">Tipo sugerido</label>
+            <select id="tpl-type" value={documentType} onChange={(e) => setDocumentType(e.target.value)}>
+              {DOCUMENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="tpl-file">Archivo base</label>
+            <input id="tpl-file" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+            <button type="submit" className="btn btn-primary" disabled={busy || !name.trim() || !file}>
+              Subir plantilla
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

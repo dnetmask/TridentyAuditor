@@ -18,6 +18,7 @@ from app.documents.models import (
     DocumentStatus,
     DocumentVersion,
 )
+from app.documents.textextract import extract_text
 from app.frameworks.models import Control
 
 
@@ -245,6 +246,9 @@ def create_document(
         content_type=content_type,
         file_size=len(file_content),
         file_sha256=_file_sha256(file_content),
+        content_text=extract_text(
+            file_content, media_type=content_type, filename=original_filename
+        ),
         created_by=created_by,
         change_summary=change_summary,
     )
@@ -380,12 +384,54 @@ def create_new_version(
         content_type=content_type,
         file_size=len(file_content),
         file_sha256=_file_sha256(file_content),
+        content_text=extract_text(
+            file_content, media_type=content_type, filename=original_filename
+        ),
         created_by=created_by,
         change_summary=change_summary,
     )
     db.add(version)
     db.flush()
     return version
+
+
+def search_documents(db: Session, tenant_id: str, query: str) -> list[Document]:
+    """Búsqueda de texto completo sobre el contenido de las versiones.
+
+    Usa el índice ``content_tsv`` (GIN) con ``websearch_to_tsquery`` en
+    español — soporta frases entre comillas y operadores. Devuelve los
+    documentos vigentes (no derogados ni dispuestos) que tengan al menos una
+    versión cuyo contenido coincide, ordenados por relevancia.
+    """
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import text as sa_text
+
+    tsquery = sa_func.websearch_to_tsquery("spanish", query)
+    rank = sa_func.max(sa_func.ts_rank(sa_text("content_tsv"), tsquery))
+    stmt = (
+        select(Document.id)
+        .join(DocumentVersion, DocumentVersion.document_id == Document.id)
+        .where(
+            Document.tenant_id == tenant_id,
+            Document.retired_at.is_(None),
+            Document.disposed_at.is_(None),
+            sa_text("content_tsv @@ websearch_to_tsquery('spanish', :q)").bindparams(q=query),
+        )
+        .group_by(Document.id)
+        .order_by(rank.desc())
+    )
+    ordered_ids = list(db.scalars(stmt))
+    if not ordered_ids:
+        return []
+    docs = {
+        d.id: d
+        for d in db.scalars(
+            select(Document)
+            .where(Document.id.in_(ordered_ids))
+            .options(*_document_query_options())
+        )
+    }
+    return [docs[i] for i in ordered_ids if i in docs]
 
 
 def _get_version(db: Session, tenant_id: str, document_id: uuid.UUID, version_number: int) -> DocumentVersion:

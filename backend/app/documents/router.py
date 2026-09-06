@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.activity.service import client_ip, log_event
 from app.core.config import get_settings
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
-from app.documents import lifecycle, schemas, service
+from app.documents import lifecycle, schemas, service, templates
 from app.documents.filetypes import DisallowedFileType, validate_and_resolve_type
 from app.documents.lifecycle import AckNotFound, NoApprovedVersion, UnknownUser
 from app.documents.models import DocumentOrigin
@@ -23,6 +23,7 @@ from app.documents.service import (
     VersionNotFound,
 )
 from app.documents.stamping import stamp_pdf
+from app.documents.templates import TemplateNotFound
 
 settings = get_settings()
 
@@ -86,6 +87,107 @@ def my_acknowledgments(
     return lifecycle.my_pending(db, principal.tenant_id, principal.user_id)
 
 
+# Búsqueda de texto completo (Fase 5b) — antes de /{document_id}.
+@router.get("/search", response_model=list[schemas.DocumentDetailRead])
+def search_documents(
+    q: str,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    """Busca en el CONTENIDO de los documentos (no solo metadatos)."""
+    if not q.strip():
+        return []
+    return service.search_documents(db, principal.tenant_id, q)
+
+
+# --- Plantillas de documentos (Fase 5b) — antes de /{document_id} ---
+@router.get("/templates", response_model=list[schemas.TemplateRead])
+def list_templates(
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    return templates.list_templates(db, principal.tenant_id)
+
+
+@router.post("/templates", response_model=schemas.TemplateRead, status_code=status.HTTP_201_CREATED)
+async def create_template(
+    name: str = Form(..., min_length=1, max_length=255),
+    description: str | None = Form(None),
+    document_type: str = Form("other", min_length=1, max_length=50),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(can_write),
+):
+    content, media_type = await _read_upload(file)
+    try:
+        template = templates.create_template(
+            db,
+            principal.tenant_id,
+            name=name,
+            description=description,
+            document_type=document_type,
+            created_by=principal.email,
+            file_content=content,
+            original_filename=file.filename or name,
+            content_type=media_type,
+        )
+    except IntegrityError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"La plantilla '{name}' ya existe") from exc
+    log_event(
+        db,
+        action="documents.template_created",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document_template",
+        entity_id=template.id,
+        detail=name,
+    )
+    return template
+
+
+@router.get("/templates/{template_id}/file")
+def download_template_file(
+    template_id: uuid.UUID,
+    inline: bool = False,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    try:
+        template, content = templates.read_template_file(db, principal.tenant_id, template_id)
+    except TemplateNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plantilla no encontrada") from exc
+    disposition = "inline" if inline else "attachment"
+    safe_name = (template.original_filename or template.name).replace('"', "")
+    return Response(
+        content=content,
+        media_type=template.content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'{disposition}; filename="{safe_name}"'},
+    )
+
+
+@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_template(
+    template_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(can_write),
+):
+    try:
+        templates.delete_template(db, principal.tenant_id, template_id)
+    except TemplateNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plantilla no encontrada") from exc
+    log_event(
+        db,
+        action="documents.template_deleted",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document_template",
+        entity_id=template_id,
+        detail="",
+    )
+
+
 @router.post("", response_model=schemas.DocumentDetailRead, status_code=status.HTTP_201_CREATED)
 async def create_document(
     code: str = Form(..., min_length=1, max_length=50),
@@ -100,11 +202,28 @@ async def create_document(
     origin: DocumentOrigin = Form(DocumentOrigin.INTERNAL),
     external_source: str | None = Form(None, max_length=255),
     control_ids: list[uuid.UUID] = Form(default=[]),
-    file: UploadFile = File(...),
+    # Fase 5b: crear desde una plantilla del tenant en vez de subir archivo.
+    # Se sube archivo, O se referencia una plantilla — al menos uno.
+    template_id: uuid.UUID | None = Form(None),
+    file: UploadFile | None = File(None),
     db: Session = Depends(get_tenant_db),
     principal: TenantPrincipal = Depends(can_write),
 ):
-    content, media_type = await _read_upload(file)
+    if file is not None and file.filename:
+        content, media_type = await _read_upload(file)
+        filename = file.filename
+    elif template_id is not None:
+        try:
+            template, content = templates.read_template_file(db, principal.tenant_id, template_id)
+        except TemplateNotFound as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Plantilla no encontrada") from exc
+        media_type = template.content_type
+        filename = template.original_filename or template.name
+    else:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Adjunta un archivo o elige una plantilla para el documento",
+        )
     try:
         document = service.create_document(
             db,
@@ -116,7 +235,7 @@ async def create_document(
             created_by=principal.email,
             change_summary=change_summary,
             file_content=content,
-            original_filename=file.filename or code,
+            original_filename=filename or code,
             content_type=media_type,
             area_id=area_id,
             implementation_date=implementation_date,

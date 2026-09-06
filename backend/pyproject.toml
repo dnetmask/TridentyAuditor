@@ -18,6 +18,9 @@ dependencies = [
     # marca de agua OBSOLETO/BORRADOR estampados al servir PDFs.
     "pypdf>=4.2,<7.0",
     "reportlab>=4.1,<6.0",
+    # Búsqueda de texto completo (Fase 5b): extracción de texto de DOCX
+    # (PDF lo hace pypdf). El índice tsvector lo maneja Postgres.
+    "python-docx>=1.1,<2.0",
 ]
 
 [project.optional-dependencies]

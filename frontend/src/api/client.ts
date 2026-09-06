@@ -277,7 +277,9 @@ export const api = {
       code: string;
       title: string;
       document_type: string;
-      file: File;
+      // Se adjunta un archivo O se referencia una plantilla (Fase 5b).
+      file?: File | null;
+      template_id?: string | null;
       retention_months?: number | null;
       change_summary?: string | null;
       area_id?: string | null;
@@ -303,9 +305,39 @@ export const api = {
     if (payload.origin) form.set("origin", payload.origin);
     if (payload.external_source) form.set("external_source", payload.external_source);
     for (const controlId of payload.control_ids ?? []) form.append("control_ids", controlId);
-    form.set("file", payload.file);
+    if (payload.file) form.set("file", payload.file);
+    if (payload.template_id) form.set("template_id", payload.template_id);
     return requestFormData<import("./types").DocumentDetail>("/api/v1/documents", form, token);
   },
+
+  // --- Fase 5b: búsqueda de contenido + plantillas ---
+  searchDocuments: (token: string, q: string) =>
+    request<import("./types").DocumentDetail[]>(
+      `/api/v1/documents/search?q=${encodeURIComponent(q)}`,
+      { token },
+    ),
+
+  listTemplates: (token: string) =>
+    request<import("./types").DocumentTemplate[]>("/api/v1/documents/templates", { token }),
+
+  uploadTemplate: (
+    token: string,
+    payload: { name: string; description?: string | null; document_type: string; file: File },
+  ) => {
+    const form = new FormData();
+    form.set("name", payload.name);
+    if (payload.description) form.set("description", payload.description);
+    form.set("document_type", payload.document_type);
+    form.set("file", payload.file);
+    return requestFormData<import("./types").DocumentTemplate>(
+      "/api/v1/documents/templates",
+      form,
+      token,
+    );
+  },
+
+  deleteTemplate: (token: string, templateId: string) =>
+    request<void>(`/api/v1/documents/templates/${templateId}`, { method: "DELETE", token }),
 
   updateDocument: (
     token: string,

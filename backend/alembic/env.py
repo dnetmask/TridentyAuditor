@@ -15,6 +15,8 @@ from app.documents import models as documents_models  # noqa: F401
 from app.frameworks import models as frameworks_models  # noqa: F401
 from app.legal import models as legal_models  # noqa: F401
 from app.processes import models as processes_models  # noqa: F401
+
+# document_templates vive en app.documents.models (ya importado arriba).
 from app.risk import models as risk_models  # noqa: F401
 from app.soa import models as soa_models  # noqa: F401
 from app.tenants import models as tenants_models  # noqa: F401
