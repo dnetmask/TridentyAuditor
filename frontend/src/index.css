@@ -149,17 +149,19 @@ a {
   color: var(--color-text);
 }
 
+/* El logo es muy ancho (≈13:1 recortado): llena el ancho del sidebar y la
+   altura sale sola — así las letras quedan lo más grandes posible sin
+   desbordar. */
 .sidebar-logo-full {
-  height: 19px;
-  width: auto;
-  max-width: 100%;
+  width: 100%;
+  height: auto;
   display: block;
   color: var(--color-text);
 }
 
 .sidebar-logomark {
   display: none;
-  height: 30px;
+  height: 36px;
   width: auto;
   flex-shrink: 0;
 }
@@ -1406,9 +1408,9 @@ form.stacked {
 /* --- Marca en el login --- */
 .login-logo-full {
   display: block;
-  height: 30px;
-  width: auto;
-  max-width: 80%;
-  margin: 0 0 0.9rem;
+  width: 100%;
+  max-width: 380px;
+  height: auto;
+  margin: 0 0 1.1rem;
   color: var(--color-text);
 }

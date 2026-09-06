@@ -29,12 +29,17 @@ export function TridentMark({ className, title = "Tridenty" }: SvgProps) {
 }
 
 /** Logo final "TRIDENTY AUDITOR" — wordmark en una sola tinta (currentColor),
- * así se adapta a modo claro/oscuro. Provisto por Netmask (Logo.tsx). */
+ * así se adapta a modo claro/oscuro. Provisto por Netmask (Logo.tsx).
+ *
+ * El viewBox está recortado a los límites reales de la tinta (medidos con
+ * getBBox: x 30→1013, y 64→130 sobre la caja original 1049×189) más un margen
+ * de 4 unidades: el archivo original trae ~65% de aire vertical, y sin este
+ * recorte el logo se veía diminuto aunque el contenedor fuera alto. */
 export function TridentyAuditorLogo({ className, title = "TRIDENTY AUDITOR" }: SvgProps) {
   return (
     <svg
       className={className}
-      viewBox="0 0 1049.82 189.63"
+      viewBox="26 60 991.4 74"
       role="img"
       aria-label={title}
       fill="currentColor"
