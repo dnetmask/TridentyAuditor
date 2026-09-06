@@ -30,6 +30,7 @@ export function DashboardPage() {
   const { session } = useAuth();
   const token = session!.token;
   const [data, setData] = useState<DashboardOverview | null>(null);
+  const [pendingReads, setPendingReads] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function DashboardPage() {
       .dashboardOverview(token)
       .then(setData)
       .catch((err) => setError(err instanceof ApiError ? err.message : "No se pudo cargar el panel"));
+    api.myAcknowledgments(token).then((acks) => setPendingReads(acks.length)).catch(() => {});
   }, [token]);
 
   return (
@@ -81,6 +83,13 @@ export function DashboardPage() {
           </div>
 
           <div className="stat-grid">
+            <StatCard
+              to="/documentos"
+              label="Obligatorios sin leer"
+              value={pendingReads}
+              tone={pendingReads > 0 ? "bad" : "ok"}
+              hint="documentos que debes acusar"
+            />
             <StatCard
               to="/documentos"
               label="Documentos vigentes"

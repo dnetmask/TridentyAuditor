@@ -22,7 +22,7 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Motor de frameworks | — | ✅ ISO/IEC 27001:2022 + Guía de Ciberseguridad CNO (Acuerdo 1960) — una norma por tenant |
 | Multitenencia (tier pooled, RLS) | — | ✅ Esqueleto |
 | Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
-| Control documental | MOD·DOC | ✅ Funcional (versionado, aprobación multinivel con dos firmas y sello SHA-256, panel elaboró/revisó/aprobó, lectura inline, PDFs estampados "copia no controlada"/OBSOLETO, áreas, revisión programada, numeración automática, derogación) |
+| Control documental | MOD·DOC | ✅ Funcional (versionado, aprobación multinivel con dos firmas y sello SHA-256, acuse de recibo "leído y entendido", retención con disposición y legal hold, panel elaboró/revisó/aprobó, lectura inline, PDFs estampados "copia no controlada"/OBSOLETO, áreas, revisión programada, numeración automática, derogación) |
 | Matriz de requisitos legales | MOD·LEG | ✅ Funcional (registro legal/regulatorio/contractual con responsable, evidencia, calificación y nivel de cumplimiento — ISO 27001 cl. 4 / A.5.31) |
 | Mapa de procesos + panel | MOD·PRC | ✅ Funcional (árbol de procesos con documentos vinculados, visor embebido de documentos y dashboard de entrada con el estado del SGSI) |
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (Ruta SGSI o Ruta CNO según la norma del tenant, evidencia obligatoria, desbloqueo por fase) |

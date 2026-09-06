@@ -1,6 +1,6 @@
 # MOD·DOC — Control documental
 
-**Fases:** 1, 2 y 3 · **Estado:** ✅ Implementado (`backend/app/documents`, `backend/app/areas`)
+**Fases:** 1, 2, 3 y 5a · **Estado:** ✅ Implementado (`backend/app/documents`, `backend/app/areas`)
 
 Versionado y flujo de aprobación de documentos, con RLS por tenant. Base
 sobre la que cuelga la evidencia de los demás módulos (MOD·RSK, MOD·SOA,
@@ -155,6 +155,26 @@ muestra los tres nombres — elaboró (`created_by`), revisó (firma del
 gerente de área) y aprobó (firma de seguridad de la información; en
 versiones anteriores a la Fase 2, el `approved_by` de un solo paso).
 
+## Acuse de recibo y retención (Fase 5a)
+
+**Acuse de recibo ("leído y entendido")** — copias controladas: publicar la
+versión aprobada de un documento a un conjunto de usuarios crea un acuse
+pendiente por cada uno; el usuario lo marca como leído. Es la evidencia que
+el auditor pide para toda política — el "obligatorios sin leer" de un gestor
+documental comercial. El acuse apunta a la **versión**, no solo al documento:
+aprobar una versión nueva exige volver a acusar recibo. Publicar solo aplica
+a una versión aprobada, y republicar a alguien que ya la tiene es idempotente
+(no duplica ni borra su lectura). Todo queda en la bitácora
+(`documents.published`, `documents.acknowledged`).
+
+**Retención y disposición final** — `retention_months` (Fase 1) por fin se
+usa: la **fecha de disposición** se calcula en vivo (aprobación de la versión
+vigente, o derogación, + retención) y se expone como `disposition_date`. Un
+**legal hold** congela la disposición (litigio/requerimiento): mientras esté
+activo, `dispose` se rechaza aunque venza la retención. La disposición final
+(`archive`/`destroy`) exige acta (motivo + quién + cuándo) y no borra el
+registro — la disposición en sí es evidencia.
+
 ## Endpoints
 
 Todos requieren `Authorization: Bearer <jwt>`.
@@ -167,6 +187,12 @@ Todos requieren `Authorization: Bearer <jwt>`.
 | GET | `/api/v1/documents/{id}` | Detalle con área, controles y todas sus versiones |
 | PATCH | `/api/v1/documents/{id}` | Edita metadatos (título, área, `control_ids` como reemplazo del conjunto, origen/fuente, fechas, frecuencia, retención). Bloqueado si el documento está derogado |
 | POST | `/api/v1/documents/{id}/retire` | Deroga el documento con motivo obligatorio (rol revisor) |
+| POST | `/api/v1/documents/{id}/publish` | Distribuye la versión aprobada a usuarios para acuse de recibo |
+| GET | `/api/v1/documents/{id}/acknowledgments` | Resumen de acuses (leídos/pendientes) del documento |
+| POST | `/api/v1/documents/{id}/acknowledge` | El usuario marca "leído y entendido" su acuse |
+| GET | `/api/v1/documents/my-acknowledgments` | Los acuses pendientes del usuario ("obligatorios sin leer") |
+| POST | `/api/v1/documents/{id}/legal-hold` | Activa/levanta la retención legal (rol revisor) |
+| POST | `/api/v1/documents/{id}/dispose` | Disposición final archivar/destruir con acta (rol revisor) |
 | POST | `/api/v1/documents/{id}/versions` | `multipart/form-data` — nueva versión en `draft` con `change_summary` obligatorio |
 | GET | `/api/v1/documents/{id}/versions/{n}/file` | Sirve el binario (verifica SHA-256; PDF sale estampado). `?inline=true` para leer en el navegador (botón Ver) |
 | POST | `/api/v1/documents/{id}/versions/{n}/submit` | `draft` → `in_review` |
@@ -205,10 +231,10 @@ tipo, y gestión de áreas (crear/listar con gerente) desde la misma pantalla.
 
 ## Pendiente
 
-- Listas maestras y política de retención automatizada (hoy `retention_months`
-  se guarda pero no dispara ninguna acción) — Fase 5 de la ruta.
-- Recordatorios/notificaciones de revisión programada (hoy el semáforo es
-  visual en la pantalla; no envía correos) — Fase 3 de la ruta.
+- **Plantillas de documentos** y **búsqueda de texto completo** (extracción de
+  PDF/DOCX + `tsvector`) — cierre de la Fase 5 (segunda tanda).
+- Recordatorios/notificaciones de revisión, disposición y acuses pendientes
+  por correo (hoy todo es visual: semáforo, banner "obligatorios sin leer").
 - Migrar el binario de disco local a Object Storage S3-compatible con
   política WORM (ver "Almacenamiento del binario" arriba) — Fase S2.
 - El sello aplica solo a PDF; estampar Office exigiría convertir a PDF al

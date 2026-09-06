@@ -3,7 +3,12 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.documents.models import ApprovalStep, DocumentOrigin, DocumentStatus
+from app.documents.models import (
+    ApprovalStep,
+    DispositionAction,
+    DocumentOrigin,
+    DocumentStatus,
+)
 
 # Nota: no hay DocumentCreate/NewVersionCreate — ambos endpoints reciben
 # multipart/form-data (Form + UploadFile) porque exigen adjuntar un archivo,
@@ -79,12 +84,52 @@ class DocumentRead(BaseModel):
     retired_at: datetime | None
     retired_by: str | None
     retirement_reason: str | None
+    # --- Retención / disposición (Fase 5) ---
+    legal_hold: bool = False
+    disposed_at: datetime | None = None
+    disposed_by: str | None = None
+    disposition_action: DispositionAction | None = None
+    disposition_notes: str | None = None
     controls: list[DocumentControlRead] = []
     created_at: datetime
 
 
 class DocumentDetailRead(DocumentRead):
     versions: list[DocumentVersionRead] = []
+    # Fecha calculada en que cumple retención y puede disponerse (o null).
+    disposition_date: date | None = None
+
+
+class AcknowledgmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    version_id: uuid.UUID
+    user_id: uuid.UUID
+    assigned_by: str
+    assigned_at: datetime
+    acknowledged_at: datetime | None
+
+
+class AcknowledgmentSummary(BaseModel):
+    total: int
+    acknowledged: int
+    pending: int
+    entries: list[AcknowledgmentRead] = []
+
+
+class PublishRequest(BaseModel):
+    user_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class DispositionRequest(BaseModel):
+    action: DispositionAction
+    notes: str = Field(min_length=1)
+
+
+class LegalHoldRequest(BaseModel):
+    hold: bool
 
 
 class DocumentUpdate(BaseModel):

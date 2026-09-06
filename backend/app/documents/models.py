@@ -1,8 +1,9 @@
+import calendar
 import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,6 +22,13 @@ class DocumentStatus(str, enum.Enum):
 class DocumentOrigin(str, enum.Enum):
     INTERNAL = "internal"
     EXTERNAL = "external"
+
+
+class DispositionAction(str, enum.Enum):
+    """Qué se hizo con el documento al cumplir su retención (Fase 5)."""
+
+    ARCHIVE = "archive"
+    DESTROY = "destroy"
 
 
 class Document(Base):
@@ -73,6 +81,25 @@ class Document(Base):
     retired_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     retirement_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # --- Retención y disposición final (Fase 5) ---
+    # ``retention_months`` (arriba) + la fecha base marcan cuándo el documento
+    # cumple su periodo de retención y puede disponerse (archivar/destruir).
+    # ``legal_hold`` congela esa disposición: mientras esté activo, el
+    # documento no puede disponerse aunque venza su retención (litigio,
+    # requerimiento regulatorio).
+    legal_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    disposed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    disposed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    disposition_action: Mapped[DispositionAction | None] = mapped_column(
+        SAEnum(
+            DispositionAction,
+            name="document_disposition_action",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=True,
+    )
+    disposition_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     area: Mapped["Area"] = relationship()  # noqa: F821 - registrado por app.areas.models
@@ -88,6 +115,30 @@ class Document(Base):
     @property
     def control_ids(self) -> list[uuid.UUID]:
         return [link.control_id for link in self.control_links]
+
+    @property
+    def disposition_date(self) -> date | None:
+        """Fecha en que cumple retención y puede disponerse (Fase 5).
+
+        Base = aprobación de la versión vigente (o derogación, si aplica) +
+        ``retention_months``. Sin retención, no vence. Se calcula en vivo,
+        igual que ``next_review_date`` se muestra sin guardar un contador.
+        """
+        if not self.retention_months:
+            return None
+        if self.retired_at is not None:
+            base = self.retired_at.date()
+        else:
+            approved = [v for v in self.versions if v.status == DocumentStatus.APPROVED]
+            version = max(approved, key=lambda v: v.version_number) if approved else None
+            if version is None or version.approved_at is None:
+                return None
+            base = version.approved_at.date()
+        total = base.month - 1 + self.retention_months
+        year = base.year + total // 12
+        month = total % 12 + 1
+        day = min(base.day, calendar.monthrange(year, month)[1])
+        return date(year, month, day)
 
     @property
     def controls(self) -> list:
@@ -217,3 +268,35 @@ class DocumentVersion(Base):
         cascade="all, delete-orphan",
         order_by="DocumentApproval.signed_at",
     )
+
+
+class DocumentAcknowledgment(Base):
+    """Acuse de recibo "leído y entendido" (Fase 5) — copias controladas.
+
+    Publicar una versión APROBADA a un conjunto de usuarios crea un acuse
+    pendiente por cada uno; el usuario lo marca como leído. Es la evidencia
+    que el auditor pide para toda política: no basta con publicar, hay que
+    demostrar que la gente la leyó (el "obligatorios sin leer" de un gestor
+    documental comercial). El acuse apunta a la VERSIÓN, no solo al
+    documento: aprobar una versión nueva exige volver a acusar recibo.
+    """
+
+    __tablename__ = "document_acknowledgments"
+    __table_args__ = (
+        UniqueConstraint("version_id", "user_id", name="uq_document_ack_version_user"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document_versions.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    assigned_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -69,6 +69,8 @@ export interface Area {
   created_at: string;
 }
 
+export type DispositionAction = "archive" | "destroy";
+
 export interface DocumentDetail {
   id: string;
   code: string;
@@ -84,9 +86,32 @@ export interface DocumentDetail {
   retired_at: string | null;
   retired_by: string | null;
   retirement_reason: string | null;
+  legal_hold: boolean;
+  disposed_at: string | null;
+  disposed_by: string | null;
+  disposition_action: DispositionAction | null;
+  disposition_notes: string | null;
+  disposition_date: string | null;
   controls: DocumentControl[];
   created_at: string;
   versions: DocumentVersion[];
+}
+
+export interface Acknowledgment {
+  id: string;
+  document_id: string;
+  version_id: string;
+  user_id: string;
+  assigned_by: string;
+  assigned_at: string;
+  acknowledged_at: string | null;
+}
+
+export interface AcknowledgmentSummary {
+  total: number;
+  acknowledged: number;
+  pending: number;
+  entries: Acknowledgment[];
 }
 
 export interface Requirement {

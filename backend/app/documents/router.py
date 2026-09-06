@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 from app.activity.service import client_ip, log_event
 from app.core.config import get_settings
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
-from app.documents import schemas, service
+from app.documents import lifecycle, schemas, service
 from app.documents.filetypes import DisallowedFileType, validate_and_resolve_type
+from app.documents.lifecycle import AckNotFound, NoApprovedVersion, UnknownUser
 from app.documents.models import DocumentOrigin
 from app.documents.service import (
     ApprovalNotAllowed,
@@ -73,6 +74,16 @@ def next_code(
 ):
     """Consecutivo sugerido por tipo (POL-001, PRC-014, …) — editable al crear."""
     return schemas.NextCodeRead(code=service.suggest_next_code(db, principal.tenant_id, document_type))
+
+
+# También antes de /{document_id}: "my-acknowledgments" no es un UUID.
+@router.get("/my-acknowledgments", response_model=list[schemas.AcknowledgmentRead])
+def my_acknowledgments(
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    """Los acuses pendientes del usuario actual — sus 'obligatorios sin leer'."""
+    return lifecycle.my_pending(db, principal.tenant_id, principal.user_id)
 
 
 @router.post("", response_model=schemas.DocumentDetailRead, status_code=status.HTTP_201_CREATED)
@@ -212,6 +223,156 @@ def retire_document(
         detail=payload.reason,
     )
     return document
+
+
+@router.post("/{document_id}/publish", response_model=schemas.AcknowledgmentSummary)
+def publish_document(
+    document_id: uuid.UUID,
+    payload: schemas.PublishRequest,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(can_write),
+):
+    """Pide acuse de recibo de la versión vigente a un conjunto de usuarios."""
+    try:
+        created = lifecycle.publish_for_acknowledgment(
+            db,
+            principal.tenant_id,
+            document_id,
+            user_ids=payload.user_ids,
+            assigned_by=principal.email,
+        )
+    except DocumentNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado") from exc
+    except NoApprovedVersion as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Solo se puede distribuir un documento con una versión aprobada",
+        ) from exc
+    except InvalidTransition as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except UnknownUser as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, f"Usuarios inválidos: {exc}"
+        ) from exc
+    log_event(
+        db,
+        action="documents.published",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"{len(created)} destinatario(s)",
+    )
+    return _ack_summary(db, principal.tenant_id, document_id)
+
+
+@router.get("/{document_id}/acknowledgments", response_model=schemas.AcknowledgmentSummary)
+def document_acknowledgments(
+    document_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    return _ack_summary(db, principal.tenant_id, document_id)
+
+
+@router.post("/{document_id}/acknowledge", response_model=schemas.AcknowledgmentRead)
+def acknowledge_document(
+    document_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    """El usuario marca 'leído y entendido' su acuse del documento."""
+    try:
+        ack = lifecycle.acknowledge(db, principal.tenant_id, document_id, user_id=principal.user_id)
+    except AckNotFound as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "No tienes un acuse pendiente para este documento"
+        ) from exc
+    log_event(
+        db,
+        action="documents.acknowledged",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail="leído y entendido",
+    )
+    return ack
+
+
+def _ack_summary(db: Session, tenant_id: str, document_id: uuid.UUID) -> schemas.AcknowledgmentSummary:
+    entries = lifecycle.list_acknowledgments(db, tenant_id, document_id)
+    acknowledged = sum(1 for e in entries if e.acknowledged_at is not None)
+    return schemas.AcknowledgmentSummary(
+        total=len(entries),
+        acknowledged=acknowledged,
+        pending=len(entries) - acknowledged,
+        entries=entries,
+    )
+
+
+# --- Retención / disposición final (Fase 5) ---
+@router.post("/{document_id}/legal-hold", response_model=schemas.DocumentDetailRead)
+def set_legal_hold(
+    document_id: uuid.UUID,
+    payload: schemas.LegalHoldRequest,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(can_review),
+):
+    """Activa/levanta la retención legal — mientras está activa, no se dispone."""
+    try:
+        lifecycle.set_legal_hold(db, principal.tenant_id, document_id, hold=payload.hold)
+    except DocumentNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado") from exc
+    except InvalidTransition as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    log_event(
+        db,
+        action="documents.legal_hold",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail="activado" if payload.hold else "levantado",
+    )
+    return service.get_document(db, principal.tenant_id, document_id)
+
+
+@router.post("/{document_id}/dispose", response_model=schemas.DocumentDetailRead)
+def dispose_document(
+    document_id: uuid.UUID,
+    payload: schemas.DispositionRequest,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(can_review),
+):
+    """Disposición final (archivar/destruir) tras cumplir la retención."""
+    try:
+        lifecycle.dispose(
+            db,
+            principal.tenant_id,
+            document_id,
+            action=payload.action,
+            notes=payload.notes,
+            disposed_by=principal.email,
+        )
+    except DocumentNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado") from exc
+    except InvalidTransition as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    log_event(
+        db,
+        action="documents.disposed",
+        actor_email=principal.email,
+        actor_user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        entity_type="document",
+        entity_id=document_id,
+        detail=f"{payload.action.value} · {payload.notes}",
+    )
+    return service.get_document(db, principal.tenant_id, document_id)
 
 
 @router.post(

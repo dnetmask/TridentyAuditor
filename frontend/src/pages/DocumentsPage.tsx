@@ -4,7 +4,9 @@ import { useAuth } from "../context/AuthContext";
 import { useCompliance } from "../context/ComplianceContext";
 import { StatusBadge } from "../components/StatusBadge";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { DocumentLifecyclePanel } from "../components/DocumentLifecyclePanel";
 import type {
+  Acknowledgment,
   ApprovalStep,
   Area,
   DirectoryUser,
@@ -84,6 +86,8 @@ export function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentDetail[] | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
   const [controls, setControls] = useState<DocumentControl[]>([]);
+  const [directory, setDirectory] = useState<DirectoryUser[]>([]);
+  const [myPending, setMyPending] = useState<Acknowledgment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -107,6 +111,7 @@ export function DocumentsPage() {
     try {
       setDocuments(await api.listDocuments(token));
       api.listAreas(token).then(setAreas).catch(() => {});
+      api.myAcknowledgments(token).then(setMyPending).catch(() => {});
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo cargar la lista de documentos");
     }
@@ -115,6 +120,7 @@ export function DocumentsPage() {
   useEffect(() => {
     reload();
     api.listAreas(token).then(setAreas).catch(() => {});
+    api.directory(token).then(setDirectory).catch(() => {});
     if (session!.frameworkCode) {
       api
         .getFramework(session!.frameworkCode)
@@ -199,6 +205,29 @@ export function DocumentsPage() {
       </div>
 
       {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
+
+      {myPending.length > 0 && (
+        <div className="alert alert-warning pending-banner" style={{ marginBottom: "1rem" }}>
+          <strong>Tienes {myPending.length} documento{myPending.length === 1 ? "" : "s"} obligatorio{myPending.length === 1 ? "" : "s"} sin leer.</strong>
+          <div className="pending-list">
+            {myPending.map((ack) => {
+              const d = documents?.find((doc) => doc.id === ack.document_id);
+              return (
+                <div key={ack.id} className="pending-item">
+                  <span>{d ? `${d.code} · ${d.title}` : "Documento"}</span>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={busy}
+                    onClick={() => runAction(() => api.acknowledgeDocument(token, ack.document_id))}
+                  >
+                    Marcar leído y entendido
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="filter-bar">
@@ -289,10 +318,12 @@ export function DocumentsPage() {
                             doc={doc}
                             token={token}
                             userId={userId}
+                            directory={directory}
                             canWrite={canWrite}
                             canReview={canReview}
                             busy={busy}
                             onAction={runAction}
+                            onChanged={reload}
                             onDownload={handleDownload}
                             onView={(versionNumber) =>
                               setViewing({
@@ -473,10 +504,12 @@ function DocumentDetailPanel({
   doc,
   token,
   userId,
+  directory,
   canWrite,
   canReview,
   busy,
   onAction,
+  onChanged,
   onDownload,
   onView,
   onEdit,
@@ -486,10 +519,12 @@ function DocumentDetailPanel({
   doc: DocumentDetail;
   token: string;
   userId: string;
+  directory: DirectoryUser[];
   canWrite: boolean;
   canReview: boolean;
   busy: boolean;
   onAction: (action: () => Promise<unknown>) => Promise<void>;
+  onChanged: () => void;
   onDownload: (documentId: string, versionNumber: number) => void;
   onView: (versionNumber: number) => void;
   onEdit: () => void;
@@ -624,6 +659,15 @@ function DocumentDetailPanel({
           </button>
         </div>
       )}
+
+      <DocumentLifecyclePanel
+        token={token}
+        doc={doc}
+        canWrite={canWrite}
+        canReview={canReview}
+        directory={directory}
+        onChanged={onChanged}
+      />
 
       {showNewVersion && (
         <NewVersionModal

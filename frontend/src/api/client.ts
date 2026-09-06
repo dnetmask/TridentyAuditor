@@ -336,6 +336,48 @@ export const api = {
       body: { reason },
     }),
 
+  // --- Fase 5: acuse de recibo + retención/disposición ---
+  publishDocument: (token: string, documentId: string, userIds: string[]) =>
+    request<import("./types").AcknowledgmentSummary>(`/api/v1/documents/${documentId}/publish`, {
+      method: "POST",
+      token,
+      body: { user_ids: userIds },
+    }),
+
+  documentAcknowledgments: (token: string, documentId: string) =>
+    request<import("./types").AcknowledgmentSummary>(
+      `/api/v1/documents/${documentId}/acknowledgments`,
+      { token },
+    ),
+
+  acknowledgeDocument: (token: string, documentId: string) =>
+    request<import("./types").Acknowledgment>(`/api/v1/documents/${documentId}/acknowledge`, {
+      method: "POST",
+      token,
+    }),
+
+  myAcknowledgments: (token: string) =>
+    request<import("./types").Acknowledgment[]>("/api/v1/documents/my-acknowledgments", { token }),
+
+  setLegalHold: (token: string, documentId: string, hold: boolean) =>
+    request<import("./types").DocumentDetail>(`/api/v1/documents/${documentId}/legal-hold`, {
+      method: "POST",
+      token,
+      body: { hold },
+    }),
+
+  disposeDocument: (
+    token: string,
+    documentId: string,
+    action: import("./types").DispositionAction,
+    notes: string,
+  ) =>
+    request<import("./types").DocumentDetail>(`/api/v1/documents/${documentId}/dispose`, {
+      method: "POST",
+      token,
+      body: { action, notes },
+    }),
+
   createVersion: (token: string, documentId: string, payload: { file: File; change_summary: string }) => {
     const form = new FormData();
     form.set("change_summary", payload.change_summary);
