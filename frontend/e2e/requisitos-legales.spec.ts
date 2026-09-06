@@ -4,7 +4,7 @@ import { createTenantWithAdmin, loginAs } from "./helpers";
 test("la matriz legal registra un requisito y calcula el nivel de cumplimiento", async ({ page }) => {
   const admin = await createTenantWithAdmin(page, { namePrefix: "E2E Legal" });
   await loginAs(page, admin.email, admin.password);
-  await page.waitForURL("**/ruta-sgsi");
+  await page.waitForURL("**/panel");
 
   await page.click('.sidebar-nav a[title="Requisitos legales"]');
   await expect(page.getByText("La matriz está vacía", { exact: false })).toBeVisible();

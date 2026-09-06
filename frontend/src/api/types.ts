@@ -287,6 +287,47 @@ export interface Risk {
   updated_at: string;
 }
 
+// --- MOD·PRC (mapa de procesos) ---
+
+export interface Process {
+  id: string;
+  name: string;
+  description: string | null;
+  parent_id: string | null;
+  owner_user_id: string | null;
+  order_index: number;
+  created_at: string;
+}
+
+export interface ProcessDocument {
+  id: string;
+  code: string;
+  title: string;
+}
+
+export interface ProcessNode extends Process {
+  documents: ProcessDocument[];
+  children: ProcessNode[];
+  document_count: number;
+}
+
+// --- Dashboard de entrada ---
+
+export interface DashboardOverview {
+  compliance: ComplianceOverview;
+  documents: {
+    total_vigentes: number;
+    review_overdue: number;
+    review_upcoming: number;
+    pending_approval: number;
+  };
+  risks: { total: number; open: number; treating: number; closed: number };
+  audits: { programs: number; findings_total: number; findings_open: number; findings_closed: number };
+  legal: { total: number; compliant: number; partial: number; non_compliant: number; not_evaluated: number };
+  soa: { total: number; applicable: number };
+  processes: { total: number };
+}
+
 // --- MOD·LEG (matriz de requisitos legales) ---
 
 export type LegalRequirementType =

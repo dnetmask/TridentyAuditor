@@ -10,6 +10,7 @@ frameworks (dominio, control, riesgo, evidencia, hallazgo) — ver
 | — | Autenticación y roles | 1 | ✅ Implementado | [auth-roles.md](auth-roles.md) |
 | — | Indicador de cumplimiento | 1 | ✅ Implementado | [compliance-indicator.md](compliance-indicator.md) |
 | MOD·DOC | Control documental | 1-3 | ✅ Implementado | [mod-doc.md](mod-doc.md) |
+| MOD·PRC | Mapa de procesos + panel | 4 | ✅ Implementado | [mod-prc.md](mod-prc.md) |
 | MOD·LEG | Matriz de requisitos legales | LG | ✅ Implementado | [mod-leg.md](mod-leg.md) |
 | MOD·RSK | Gestión de riesgos | 1 | ✅ Implementado | [mod-rsk.md](mod-rsk.md) |
 | MOD·SOA | SoA · Anexo A | 1 | ✅ Implementado | [mod-soa.md](mod-soa.md) |

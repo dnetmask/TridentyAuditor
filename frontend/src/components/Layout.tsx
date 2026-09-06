@@ -10,6 +10,8 @@ import {
   IconDocuments,
   IconBook,
   IconScale,
+  IconDashboard,
+  IconProcess,
   IconUsers,
   IconBuilding,
   IconChevronLeft,
@@ -38,7 +40,7 @@ export function Layout() {
   if (!session) return <Navigate to="/entrar" replace />;
 
   const isSuperAdmin = session.role === "super_admin";
-  const homePath = isSuperAdmin ? "/admin/tenants" : "/ruta-sgsi";
+  const homePath = isSuperAdmin ? "/admin/tenants" : "/panel";
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -56,7 +58,9 @@ export function Layout() {
   const navItems: NavItem[] = isSuperAdmin
     ? [{ to: "/admin/tenants", label: "Tenants", icon: <IconBuilding /> }]
     : [
+        { to: "/panel", label: "Panel", icon: <IconDashboard /> },
         { to: "/ruta-sgsi", label: routeLabel, icon: <IconRoute /> },
+        { to: "/procesos", label: "Procesos", icon: <IconProcess /> },
         { to: "/riesgos", label: "Riesgos", icon: <IconRisk /> },
         { to: "/soa", label: "SoA", icon: <IconChecklist /> },
         { to: "/auditoria", label: "Auditoría", icon: <IconAudit /> },

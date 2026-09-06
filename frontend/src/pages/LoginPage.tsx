@@ -30,7 +30,7 @@ export function LoginPage() {
         refreshToken: res.refresh_token,
         expiresAt: Date.now() + res.expires_in * 1000,
       });
-      navigate(res.role === "super_admin" ? "/admin/tenants" : "/ruta-sgsi");
+      navigate(res.role === "super_admin" ? "/admin/tenants" : "/panel");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo iniciar sesión");
     } finally {

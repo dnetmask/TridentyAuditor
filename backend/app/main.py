@@ -16,12 +16,14 @@ from app.auth.service import bootstrap_super_admin
 from app.compliance.router import router as compliance_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal
+from app.dashboard.router import router as dashboard_router
 from app.documents.router import router as documents_router
 from app.frameworks.router import controls_router, domains_router
 from app.frameworks.router import router as frameworks_router
 from app.frameworks.seeds.cno1960 import seed_cno1960
 from app.frameworks.seeds.iso27001_2022 import seed_iso27001
 from app.legal.router import router as legal_router
+from app.processes.router import router as processes_router
 from app.risk.router import router as risk_router
 from app.soa.router import router as soa_router
 from app.tenants.router import router as tenants_router
@@ -171,6 +173,8 @@ app.include_router(tenants_router)
 app.include_router(areas_router)
 app.include_router(documents_router)
 app.include_router(legal_router)
+app.include_router(processes_router)
+app.include_router(dashboard_router)
 app.include_router(wizard_router)
 app.include_router(soa_router)
 app.include_router(risk_router)

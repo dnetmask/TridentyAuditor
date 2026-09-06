@@ -3,6 +3,7 @@ import { api, ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useCompliance } from "../context/ComplianceContext";
 import { StatusBadge } from "../components/StatusBadge";
+import { DocumentViewer } from "../components/DocumentViewer";
 import type {
   ApprovalStep,
   Area,
@@ -149,20 +150,8 @@ export function DocumentsPage() {
     }
   }
 
-  // Botón Ver: el mismo binario estampado, abierto para leer en una pestaña
-  // nueva sin descargarlo.
-  async function handleView(documentId: string, versionNumber: number) {
-    setError(null);
-    try {
-      const { blob } = await api.viewVersionFile(token, documentId, versionNumber);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      // Darle tiempo a la pestaña de cargar el blob antes de liberarlo.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo abrir el archivo");
-    }
-  }
+  // Botón Ver: previsualización embebida (visor en modal) sin salir de la app.
+  const [viewing, setViewing] = useState<{ documentId: string; version: number; title: string } | null>(null);
 
   const filtered = useMemo(() => {
     if (documents === null) return null;
@@ -305,7 +294,13 @@ export function DocumentsPage() {
                             busy={busy}
                             onAction={runAction}
                             onDownload={handleDownload}
-                            onView={handleView}
+                            onView={(versionNumber) =>
+                              setViewing({
+                                documentId: doc.id,
+                                version: versionNumber,
+                                title: `${doc.code} · ${doc.title}`,
+                              })
+                            }
                             onEdit={() => setEditDoc(doc)}
                             onRetire={() => setReason({ kind: "retire", docId: doc.id, docCode: doc.code })}
                             onReject={(versionNumber) =>
@@ -379,6 +374,16 @@ export function DocumentsPage() {
                 : api.retireDocument(token, current.docId, text),
             );
           }}
+        />
+      )}
+
+      {viewing && (
+        <DocumentViewer
+          token={token}
+          documentId={viewing.documentId}
+          versionNumber={viewing.version}
+          title={viewing.title}
+          onClose={() => setViewing(null)}
         />
       )}
     </div>
@@ -486,7 +491,7 @@ function DocumentDetailPanel({
   busy: boolean;
   onAction: (action: () => Promise<unknown>) => Promise<void>;
   onDownload: (documentId: string, versionNumber: number) => void;
-  onView: (documentId: string, versionNumber: number) => void;
+  onView: (versionNumber: number) => void;
   onEdit: () => void;
   onRetire: () => void;
   onReject: (versionNumber: number) => void;
@@ -560,7 +565,7 @@ function DocumentDetailPanel({
           </div>
           <div className="version-actions">
             {v.original_filename && isViewable(v.content_type) && (
-              <button className="btn btn-secondary btn-sm" onClick={() => onView(doc.id, v.version_number)}>
+              <button className="btn btn-secondary btn-sm" onClick={() => onView(v.version_number)}>
                 Ver
               </button>
             )}

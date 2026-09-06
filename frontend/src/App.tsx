@@ -10,6 +10,8 @@ import { AdminTenantsPage } from "./pages/AdminTenantsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { SoaPage } from "./pages/SoaPage";
 import { LegalPage } from "./pages/LegalPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ProcessesPage } from "./pages/ProcessesPage";
 import { RiskPage } from "./pages/RiskPage";
 import { AuditPage } from "./pages/AuditPage";
 import type { UserRole } from "./api/types";
@@ -17,7 +19,7 @@ import type { UserRole } from "./api/types";
 function RoleHome() {
   const { session } = useAuth();
   if (!session) return <Navigate to="/entrar" replace />;
-  return <Navigate to={session.role === "super_admin" ? "/admin/tenants" : "/ruta-sgsi"} replace />;
+  return <Navigate to={session.role === "super_admin" ? "/admin/tenants" : "/panel"} replace />;
 }
 
 function RequireRole({ roles, children }: { roles: UserRole[]; children: React.ReactNode }) {
@@ -48,6 +50,22 @@ export default function App() {
                 element={
                   <RequireRole roles={["tenant_admin"]}>
                     <UsersPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/panel"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <DashboardPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/procesos"
+                element={
+                  <RequireRole roles={["tenant_admin", "internal_auditor", "viewer"]}>
+                    <ProcessesPage />
                   </RequireRole>
                 }
               />

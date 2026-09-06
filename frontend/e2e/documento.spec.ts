@@ -4,7 +4,7 @@ import { createTenantWithAdmin, loginAs, uniqueSuffix } from "./helpers";
 test("ciclo completo de un documento: crear → enviar a revisión → aprobar", async ({ page }) => {
   const admin = await createTenantWithAdmin(page, { namePrefix: "E2E Docs" });
   await loginAs(page, admin.email, admin.password);
-  await page.waitForURL("**/ruta-sgsi");
+  await page.waitForURL("**/panel");
 
   await page.click('.sidebar-nav a[title="Documentos"]');
   await page.click('button:has-text("+ Nuevo documento")');
@@ -32,19 +32,16 @@ test("ciclo completo de un documento: crear → enviar a revisión → aprobar",
   await expect(page.getByText("Elaboró:")).toBeVisible();
   await expect(page.getByText("Aprobó:")).toBeVisible();
 
-  // Botón Ver: abre el archivo en una pestaña nueva sin descargarlo.
-  const [popup] = await Promise.all([
-    page.waitForEvent("popup"),
-    page.click('button:has-text("Ver")'),
-  ]);
-  await popup.waitForLoadState();
-  expect(popup.url()).toContain("blob:");
+  // Botón Ver: abre el visor embebido (Fase 4) sin salir de la app.
+  await page.click('button:has-text("Ver")');
+  await expect(page.locator(".doc-viewer-frame")).toBeVisible();
+  await page.click('.modal-viewer button:has-text("Cerrar")');
 });
 
 test("un documento con área exige dos firmas: gerente de área y seguridad", async ({ page }) => {
   const admin = await createTenantWithAdmin(page, { namePrefix: "E2E Firmas" });
   await loginAs(page, admin.email, admin.password);
-  await page.waitForURL("**/ruta-sgsi");
+  await page.waitForURL("**/panel");
   await page.click('.sidebar-nav a[title="Documentos"]');
 
   // Crear el área desde la misma pantalla.

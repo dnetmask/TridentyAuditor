@@ -9,7 +9,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
 }
@@ -189,6 +189,49 @@ export const api = {
     areaId: string,
     payload: { name?: string; manager_user_id?: string | null },
   ) => request<import("./types").Area>(`/api/v1/areas/${areaId}`, { method: "PATCH", token, body: payload }),
+
+  // --- MOD·PRC (mapa de procesos) + Dashboard ---
+  processTree: (token: string) =>
+    request<import("./types").ProcessNode[]>("/api/v1/processes/tree", { token }),
+
+  listProcesses: (token: string) =>
+    request<import("./types").Process[]>("/api/v1/processes", { token }),
+
+  createProcess: (
+    token: string,
+    payload: {
+      name: string;
+      description?: string | null;
+      parent_id?: string | null;
+      owner_user_id?: string | null;
+      order_index?: number;
+      document_ids?: string[];
+    },
+  ) => request<import("./types").Process>("/api/v1/processes", { method: "POST", token, body: payload }),
+
+  updateProcess: (
+    token: string,
+    processId: string,
+    payload: {
+      name?: string;
+      description?: string | null;
+      parent_id?: string | null;
+      owner_user_id?: string | null;
+      order_index?: number;
+      document_ids?: string[];
+    },
+  ) =>
+    request<import("./types").Process>(`/api/v1/processes/${processId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  deleteProcess: (token: string, processId: string) =>
+    request<void>(`/api/v1/processes/${processId}`, { method: "DELETE", token }),
+
+  dashboardOverview: (token: string) =>
+    request<import("./types").DashboardOverview>("/api/v1/dashboard/overview", { token }),
 
   // --- MOD·LEG (matriz de requisitos legales) ---
   listLegalRequirements: (token: string) =>

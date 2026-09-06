@@ -77,6 +77,29 @@ export function IconBook(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconDashboard(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </Icon>
+  );
+}
+
+export function IconProcess(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="6" height="4" rx="1" />
+      <rect x="15" y="4" width="6" height="4" rx="1" />
+      <rect x="9" y="16" width="6" height="4" rx="1" />
+      <path d="M6 8v3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" />
+      <path d="M12 13v3" />
+    </Icon>
+  );
+}
+
 export function IconScale(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

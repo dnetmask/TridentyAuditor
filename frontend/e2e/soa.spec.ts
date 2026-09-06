@@ -4,7 +4,7 @@ import { createTenantWithAdmin, loginAs } from "./helpers";
 test("instanciar el SoA crea las entradas de la norma del tenant", async ({ page }) => {
   const admin = await createTenantWithAdmin(page, { namePrefix: "E2E SoA" });
   await loginAs(page, admin.email, admin.password);
-  await page.waitForURL("**/ruta-sgsi");
+  await page.waitForURL("**/panel");
 
   await page.click('.sidebar-nav a[title="SoA"]');
   await expect(page.getByText("Declaración de Aplicabilidad")).toBeVisible();
