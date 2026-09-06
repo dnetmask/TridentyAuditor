@@ -3,7 +3,7 @@ import { NavLink, Outlet, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { ComplianceMeter } from "./ComplianceMeter";
-import { TridentMark, TridentyWordmark } from "./Brand";
+import { TridentMark, TridentyAuditorLogo } from "./Brand";
 import {
   IconRoute,
   IconRisk,
@@ -83,11 +83,8 @@ export function Layout() {
     <div className="app-shell">
       <aside className={`sidebar${collapsed ? " sidebar-collapsed" : ""}`}>
         <NavLink to={homePath} className="sidebar-brand" title="TridentyAuditor">
+          <TridentyAuditorLogo className="sidebar-logo-full" />
           <TridentMark className="sidebar-logomark" />
-          <span className="sidebar-brand-text">
-            <TridentyWordmark className="sidebar-wordmark" />
-            <span className="sidebar-tagline">Auditor · Gestión de cumplimiento</span>
-          </span>
         </NavLink>
 
         {!isSuperAdmin && session.tenantName && (

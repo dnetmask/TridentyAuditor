@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { TridentMark, TridentyWordmark } from "../components/Brand";
+import { TridentyAuditorLogo } from "../components/Brand";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -42,11 +42,8 @@ export function LoginPage() {
   return (
     <div className="login-shell">
       <div className="login-card">
-        <div className="login-brand">
-          <TridentMark className="login-mark" />
-          <TridentyWordmark className="login-wordmark" />
-        </div>
-        <p className="subtitle">Auditor · Plataforma GRC multitenant</p>
+        <TridentyAuditorLogo className="login-logo-full" />
+        <p className="subtitle">Plataforma GRC multitenant</p>
 
         {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
 
