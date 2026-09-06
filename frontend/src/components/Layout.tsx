@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { ComplianceMeter } from "./ComplianceMeter";
 import { TridentMark, TridentyAuditorLogo } from "./Brand";
 import {
@@ -20,6 +21,7 @@ import {
   IconLogout,
   IconSun,
   IconMoon,
+  IconMenu,
 } from "./icons";
 import type { UserRole } from "../api/types";
 
@@ -41,6 +43,21 @@ export function Layout() {
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
   );
+
+  // Responsive: en tablet (<1024px) el sidebar se fuerza a riel de íconos; en
+  // móvil (<768px) vive fuera de pantalla y se abre como cajón desde la
+  // hamburguesa de la barra superior. Se cierra al navegar o al tocar el fondo.
+  const isTablet = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    document.body.classList.toggle("drawer-open", mobileOpen);
+    return () => document.body.classList.remove("drawer-open");
+  }, [mobileOpen]);
+  const effectiveCollapsed = isMobile ? false : collapsed || isTablet;
 
   if (!session) return <Navigate to="/entrar" replace />;
 
@@ -81,7 +98,15 @@ export function Layout() {
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar${collapsed ? " sidebar-collapsed" : ""}`}>
+      <aside
+        className={[
+          "sidebar",
+          effectiveCollapsed ? "sidebar-collapsed" : "",
+          mobileOpen ? "sidebar-mobile-open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <NavLink to={homePath} className="sidebar-brand" title="TridentyAuditor">
           <TridentyAuditorLogo className="sidebar-logo-full" />
           <TridentMark className="sidebar-logomark" />
@@ -118,10 +143,12 @@ export function Layout() {
           <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>
         </button>
 
-        <button type="button" className="sidebar-collapse-toggle" onClick={toggleCollapsed}>
-          <IconChevronLeft />
-          <span>Contraer</span>
-        </button>
+        {!isTablet && (
+          <button type="button" className="sidebar-collapse-toggle" onClick={toggleCollapsed}>
+            <IconChevronLeft />
+            <span>Contraer</span>
+          </button>
+        )}
 
         <div className="sidebar-footer">
           <div className="sidebar-user" title={`${session.fullName} · ${ROLE_LABEL[session.role]}`}>
@@ -135,8 +162,21 @@ export function Layout() {
         </div>
       </aside>
 
+      {mobileOpen && (
+        <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+      )}
+
       <div className="main-area">
         <header className="content-topbar">
+          <button
+            type="button"
+            className="topbar-menu-btn"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={mobileOpen}
+          >
+            <IconMenu />
+          </button>
           <span className="content-topbar-title">{pageTitle}</span>
           {!isSuperAdmin && <ComplianceMeter />}
         </header>

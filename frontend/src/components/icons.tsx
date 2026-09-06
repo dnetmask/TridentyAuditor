@@ -177,3 +177,13 @@ export function IconSun(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+export function IconMenu(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </Icon>
+  );
+}
