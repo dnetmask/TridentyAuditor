@@ -10,6 +10,18 @@ class DocumentStats(BaseModel):
     pending_approval: int
 
 
+class DocumentHygiene(BaseModel):
+    total: int
+    scheduled: int
+    unscheduled: int
+    overdue: int
+    upcoming: int
+    current: int
+    pct_current: int
+    avg_implementation_days: int
+    implemented_docs: int
+
+
 class RiskStats(BaseModel):
     total: int
     open: int
@@ -44,6 +56,7 @@ class ProcessStats(BaseModel):
 class DashboardRead(BaseModel):
     compliance: ComplianceOverview
     documents: DocumentStats
+    documental_hygiene: DocumentHygiene
     risks: RiskStats
     audits: AuditStats
     legal: LegalStats

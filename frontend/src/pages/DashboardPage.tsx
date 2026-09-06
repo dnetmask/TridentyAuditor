@@ -136,8 +136,51 @@ export function DashboardPage() {
               hint={`${data.soa.total} en la declaración`}
             />
           </div>
+
+          <HygienePanel hygiene={data.documental_hygiene} />
         </>
       )}
+    </div>
+  );
+}
+
+function HygienePanel({ hygiene }: { hygiene: DashboardOverview["documental_hygiene"] }) {
+  return (
+    <div className="card" style={{ marginTop: "1.25rem" }}>
+      <div className="page-header" style={{ marginBottom: "0.35rem" }}>
+        <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Higiene documental</h2>
+      </div>
+      <p className="muted" style={{ marginTop: 0, fontSize: "0.84rem" }}>
+        La lectura de "¿está al día?" — complementa, no reemplaza, el indicador de
+        cumplimiento de arriba: aquí se mide vigencia y frescura, no madurez de
+        implementación del SGSI.
+      </p>
+      <div className="hygiene-grid">
+        <div className="hygiene-cell good">
+          <div className="num">{hygiene.pct_current}%</div>
+          <div className="lbl">Al día (de los programados)</div>
+        </div>
+        <div className={`hygiene-cell${hygiene.overdue > 0 ? " bad" : ""}`}>
+          <div className="num">{hygiene.overdue}</div>
+          <div className="lbl">Vencidos</div>
+        </div>
+        <div className={`hygiene-cell${hygiene.upcoming > 0 ? " warn" : ""}`}>
+          <div className="num">{hygiene.upcoming}</div>
+          <div className="lbl">Por vencer (≤30 d)</div>
+        </div>
+        <div className={`hygiene-cell${hygiene.unscheduled > 0 ? " warn" : ""}`}>
+          <div className="num">{hygiene.unscheduled}</div>
+          <div className="lbl">Sin revisión programada</div>
+        </div>
+        <div className="hygiene-cell">
+          <div className="num">{hygiene.avg_implementation_days}</div>
+          <div className="lbl">Días prom. de implementación</div>
+        </div>
+        <div className="hygiene-cell">
+          <div className="num">{hygiene.total}</div>
+          <div className="lbl">Documentos vigentes</div>
+        </div>
+      </div>
     </div>
   );
 }

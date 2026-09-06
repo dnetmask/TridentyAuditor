@@ -33,6 +33,17 @@ const CLASSIFICATION_LABEL: Record<FindingClassification, string> = {
   improvement: "Oportunidad de mejora",
 };
 
+const COST_FMT = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  maximumFractionDigits: 0,
+});
+
+function formatCost(value: number | null): string {
+  if (value == null) return "—";
+  return COST_FMT.format(value);
+}
+
 interface DomainOption {
   id: string;
   code: string;
@@ -132,6 +143,8 @@ export function AuditPage() {
           <SummaryStat label="Cerrados" value={summary.closed_findings} />
           <SummaryStat label="No conf. mayores" value={summary.major_nc} />
           <SummaryStat label="No conf. menores" value={summary.minor_nc} />
+          <SummaryStat label="Avance CAPA abierto" value={`${summary.capa_open_avg_progress}%`} />
+          <SummaryStat label="Costo CAPA abierto" value={formatCost(summary.capa_open_estimated_cost)} />
         </div>
       )}
 
@@ -159,6 +172,7 @@ export function AuditPage() {
                 <th>Fecha planeada</th>
                 <th>Fecha ejecutada</th>
                 <th>Estado</th>
+                <th>Evaluación auditor</th>
               </tr>
             </thead>
             <tbody>
@@ -199,6 +213,7 @@ export function AuditPage() {
                 <th>Auditoría</th>
                 <th>Control</th>
                 <th>Clasificación</th>
+                <th>Avance</th>
                 <th>Vencimiento</th>
                 <th>Estado</th>
               </tr>
@@ -213,12 +228,13 @@ export function AuditPage() {
                       <td>{programTitle(f.audit_id)}</td>
                       <td>{f.control ? `${f.control.code}` : "—"}</td>
                       <td><FindingClassificationBadge classification={f.classification} /></td>
+                      <td><ProgressBar value={f.progress_pct} /></td>
                       <td>{f.due_date ?? "—"}</td>
                       <td>{FINDING_STATUS_LABEL[f.status]}</td>
                     </tr>
                     {isOpen && (
                       <tr>
-                        <td colSpan={6} style={{ padding: 0 }}>
+                        <td colSpan={7} style={{ padding: 0 }}>
                           <FindingDetailPanel
                             finding={f}
                             directory={directory}
@@ -268,11 +284,23 @@ export function AuditPage() {
   );
 }
 
-function SummaryStat({ label, value }: { label: string; value: number }) {
+function SummaryStat({ label, value }: { label: string; value: number | string }) {
   return (
     <div>
       <div style={{ fontSize: "1.4rem", fontWeight: 700 }}>{value}</div>
       <div className="muted" style={{ fontSize: "0.78rem" }}>{label}</div>
+    </div>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div className="capa-progress" title={`${pct}% de avance`}>
+      <div className="capa-progress-track">
+        <div className="capa-progress-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="capa-progress-label">{pct}%</span>
     </div>
   );
 }
@@ -288,10 +316,17 @@ function ProgramRow({
   directory: DirectoryUser[];
   canWrite: boolean;
   busy: boolean;
-  onUpdate: (payload: { status?: AuditStatus; executed_date?: string | null }) => void;
+  onUpdate: (payload: {
+    status?: AuditStatus;
+    executed_date?: string | null;
+    auditor_score?: number | null;
+    auditor_evaluation?: string | null;
+  }) => void;
 }) {
   const [executedDate, setExecutedDate] = useState(program.executed_date ?? "");
+  const [evaluation, setEvaluation] = useState(program.auditor_evaluation ?? "");
   const disabled = busy || !canWrite;
+  const completed = program.status === "completed";
 
   return (
     <tr>
@@ -318,6 +353,33 @@ function ProgramRow({
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
+      </td>
+      <td>
+        {!completed ? (
+          <span className="muted" style={{ fontSize: "0.78rem" }}>Se evalúa al cerrar</span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: "9rem" }}>
+            <select
+              aria-label="Puntaje del auditor"
+              value={program.auditor_score ?? ""}
+              disabled={disabled}
+              onChange={(e) => onUpdate({ auditor_score: e.target.value ? Number(e.target.value) : null })}
+            >
+              <option value="">— puntaje —</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>{"★".repeat(n)} ({n}/5)</option>
+              ))}
+            </select>
+            <input
+              aria-label="Comentario de la evaluación del auditor"
+              placeholder="Comentario"
+              value={evaluation}
+              disabled={disabled}
+              onChange={(e) => setEvaluation(e.target.value)}
+              onBlur={() => evaluation !== (program.auditor_evaluation ?? "") && onUpdate({ auditor_evaluation: evaluation })}
+            />
+          </div>
+        )}
       </td>
     </tr>
   );
@@ -391,6 +453,39 @@ function FindingDetailPanel({
               <option key={d.id} value={d.id}>{d.code} · {d.title}</option>
             ))}
           </select>
+        </div>
+        <div className="field">
+          <label>Avance de la acción (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={finding.progress_pct}
+            disabled={disabled || finding.status === "closed"}
+            onBlur={(e) => {
+              const n = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+              if (n !== finding.progress_pct) onUpdate({ progress_pct: n });
+            }}
+          />
+          <ProgressBar value={finding.progress_pct} />
+        </div>
+        <div className="field">
+          <label>Costo estimado</label>
+          <input
+            type="number"
+            min={0}
+            step={1000}
+            defaultValue={finding.estimated_cost ?? ""}
+            disabled={disabled}
+            onBlur={(e) => {
+              const raw = e.target.value.trim();
+              const n = raw === "" ? null : Math.max(0, Number(raw) || 0);
+              if (n !== (finding.estimated_cost ?? null)) onUpdate({ estimated_cost: n });
+            }}
+          />
+          <div className="muted" style={{ fontSize: "0.78rem", marginTop: "0.2rem" }}>
+            {formatCost(finding.estimated_cost)}
+          </div>
         </div>
       </div>
 
@@ -532,6 +627,7 @@ function CreateFindingModal({
   const [controlId, setControlId] = useState("");
   const [classification, setClassification] = useState<FindingClassification>("minor_nc");
   const [description, setDescription] = useState("");
+  const [estimatedCost, setEstimatedCost] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -545,6 +641,7 @@ function CreateFindingModal({
         control_id: controlId || null,
         classification,
         description,
+        estimated_cost: estimatedCost.trim() === "" ? null : Math.max(0, Number(estimatedCost) || 0),
       });
       onCreated();
     } catch (err) {
@@ -592,6 +689,18 @@ function CreateFindingModal({
           <div className="field">
             <label htmlFor="f-description">Descripción</label>
             <textarea id="f-description" required rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="f-cost">Costo estimado de la acción (opcional)</label>
+            <input
+              id="f-cost"
+              type="number"
+              min={0}
+              step={1000}
+              value={estimatedCost}
+              onChange={(e) => setEstimatedCost(e.target.value)}
+              placeholder="0"
+            />
           </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>

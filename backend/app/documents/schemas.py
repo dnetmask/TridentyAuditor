@@ -175,3 +175,22 @@ class VersionRejectRequest(BaseModel):
 
 class NextCodeRead(BaseModel):
     code: str
+
+
+class ApprovalSealRead(BaseModel):
+    step: str
+    signed_by: str
+    signed_at: datetime
+    file_sha256: str | None
+    matches_current: bool | None
+
+
+class VersionIntegrityRead(BaseModel):
+    version_number: int
+    algorithm: str
+    expected_sha256: str | None
+    actual_sha256: str | None
+    has_hash: bool
+    file_present: bool
+    verified: bool
+    approvals: list[ApprovalSealRead]

@@ -4,7 +4,13 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.audit.models import AuditFinding, AuditProgram, FindingClassification, FindingStatus
+from app.audit.models import (
+    AuditFinding,
+    AuditProgram,
+    AuditStatus,
+    FindingClassification,
+    FindingStatus,
+)
 from app.documents.service import has_approved_version
 
 
@@ -21,6 +27,10 @@ class FindingNotFound(AuditError):
 
 
 class InvalidFinding(AuditError):
+    pass
+
+
+class InvalidProgram(AuditError):
     pass
 
 
@@ -72,6 +82,8 @@ def update_program(
     planned_date,
     executed_date,
     status,
+    auditor_score: int | None = None,
+    auditor_evaluation: str | None = None,
 ) -> AuditProgram:
     program = _get_program(db, tenant_id, program_id)
     if title is not None:
@@ -88,6 +100,21 @@ def update_program(
         program.executed_date = executed_date
     if status is not None:
         program.status = status
+
+    # La evaluación del auditor se diligencia al cerrar la auditoría: el estado
+    # resultante (el que llega en este update, o el ya guardado) debe ser
+    # "completed". Así el puntaje refleja una auditoría ejecutada, no una plan.
+    if auditor_score is not None or auditor_evaluation is not None:
+        if program.status != AuditStatus.COMPLETED:
+            raise InvalidProgram(
+                "La evaluación del auditor solo se registra al cerrar la auditoría "
+                "(estado 'completed')"
+            )
+        if auditor_score is not None:
+            program.auditor_score = auditor_score
+        if auditor_evaluation is not None:
+            program.auditor_evaluation = auditor_evaluation
+
     db.flush()
     return program
 
@@ -104,6 +131,8 @@ def create_finding(
     corrective_action: str | None,
     owner_user_id: uuid.UUID | None,
     due_date,
+    progress_pct: int = 0,
+    estimated_cost: float | None = None,
 ) -> AuditFinding:
     _get_program(db, tenant_id, audit_id)  # valida que la auditoría exista y sea del tenant
     finding = AuditFinding(
@@ -116,6 +145,8 @@ def create_finding(
         corrective_action=corrective_action,
         owner_user_id=owner_user_id,
         due_date=due_date,
+        progress_pct=progress_pct,
+        estimated_cost=estimated_cost,
     )
     db.add(finding)
     db.flush()
@@ -152,6 +183,8 @@ def update_finding(
     due_date,
     status: FindingStatus | None,
     evidence_document_id: uuid.UUID | None,
+    progress_pct: int | None = None,
+    estimated_cost: float | None = None,
 ) -> AuditFinding:
     finding = _get_finding(db, tenant_id, finding_id)
 
@@ -171,6 +204,10 @@ def update_finding(
         finding.due_date = due_date
     if evidence_document_id is not None:
         finding.evidence_document_id = evidence_document_id
+    if progress_pct is not None:
+        finding.progress_pct = progress_pct
+    if estimated_cost is not None:
+        finding.estimated_cost = estimated_cost
     if status is not None:
         finding.status = status
 
@@ -183,6 +220,8 @@ def update_finding(
             )
         if finding.closed_at is None:
             finding.closed_at = datetime.now(UTC)
+        # Una acción CAPA cerrada está, por definición, al 100% de avance.
+        finding.progress_pct = 100
     else:
         finding.closed_at = None
 
@@ -193,6 +232,11 @@ def update_finding(
 def summary(db: Session, tenant_id: str) -> dict:
     programs = list_programs(db, tenant_id)
     findings = list_findings(db, tenant_id)
+    open_capa = [f for f in findings if f.status != FindingStatus.CLOSED]
+    avg_progress = (
+        round(sum(f.progress_pct for f in open_capa) / len(open_capa)) if open_capa else 0
+    )
+    open_cost = float(sum(f.estimated_cost or 0 for f in open_capa))
     return {
         "total_programs": len(programs),
         "total_findings": len(findings),
@@ -201,4 +245,6 @@ def summary(db: Session, tenant_id: str) -> dict:
         "closed_findings": sum(1 for f in findings if f.status == FindingStatus.CLOSED),
         "major_nc": sum(1 for f in findings if f.classification == FindingClassification.MAJOR_NC),
         "minor_nc": sum(1 for f in findings if f.classification == FindingClassification.MINOR_NC),
+        "capa_open_avg_progress": avg_progress,
+        "capa_open_estimated_cost": open_cost,
     }

@@ -36,6 +36,8 @@ class AuditProgramUpdate(BaseModel):
     planned_date: date | None = None
     executed_date: date | None = None
     status: AuditStatus | None = None
+    auditor_score: int | None = Field(default=None, ge=1, le=5)
+    auditor_evaluation: str | None = None
 
 
 class AuditProgramRead(BaseModel):
@@ -49,6 +51,8 @@ class AuditProgramRead(BaseModel):
     planned_date: date | None
     executed_date: date | None
     status: AuditStatus
+    auditor_score: int | None
+    auditor_evaluation: str | None
     created_at: datetime
 
 
@@ -61,6 +65,8 @@ class AuditFindingCreate(BaseModel):
     corrective_action: str | None = None
     owner_user_id: uuid.UUID | None = None
     due_date: date | None = None
+    progress_pct: int = Field(default=0, ge=0, le=100)
+    estimated_cost: float | None = Field(default=None, ge=0)
 
 
 class AuditFindingUpdate(BaseModel):
@@ -73,6 +79,8 @@ class AuditFindingUpdate(BaseModel):
     due_date: date | None = None
     status: FindingStatus | None = None
     evidence_document_id: uuid.UUID | None = None
+    progress_pct: int | None = Field(default=None, ge=0, le=100)
+    estimated_cost: float | None = Field(default=None, ge=0)
 
 
 class AuditFindingRead(BaseModel):
@@ -89,6 +97,8 @@ class AuditFindingRead(BaseModel):
     due_date: date | None
     status: FindingStatus
     evidence_document_id: uuid.UUID | None
+    progress_pct: int
+    estimated_cost: float | None
     closed_at: datetime | None
     created_at: datetime
 
@@ -101,3 +111,7 @@ class AuditSummary(BaseModel):
     closed_findings: int
     major_nc: int
     minor_nc: int
+    # Seguimiento CAPA (COMP-B): avance promedio y costo estimado de las
+    # acciones aún abiertas (no cerradas) — la lectura "Mejoramiento Continuo".
+    capa_open_avg_progress: int
+    capa_open_estimated_cost: float

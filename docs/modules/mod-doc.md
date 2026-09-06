@@ -222,6 +222,7 @@ Todos requieren `Authorization: Bearer <jwt>`.
 | POST | `/api/v1/documents/{id}/dispose` | Disposición final archivar/destruir con acta (rol revisor) |
 | POST | `/api/v1/documents/{id}/versions` | `multipart/form-data` — nueva versión en `draft` con `change_summary` obligatorio |
 | GET | `/api/v1/documents/{id}/versions/{n}/file` | Sirve el binario (verifica SHA-256; PDF sale estampado). `?inline=true` para leer en el navegador (botón Ver) |
+| GET | `/api/v1/documents/{id}/versions/{n}/verify` | Verificación de integridad a la vista del cliente: recalcula el SHA-256 y lo compara con el hash registrado al subir y con el sello de cada firma; reporta `verified`/`expected`/`actual` (no lanza error ante desajuste) |
 | POST | `/api/v1/documents/{id}/versions/{n}/submit` | `draft` → `in_review` |
 | POST | `/api/v1/documents/{id}/versions/{n}/reject` | `in_review` → `draft`, con `reason` obligatorio; borra firmas parciales |
 | POST | `/api/v1/documents/{id}/versions/{n}/approve` | Firma el siguiente paso pendiente (gerente de área → seguridad); con la última firma pasa a `approved` y recalcula próxima revisión |
@@ -259,7 +260,10 @@ Suma un **buscador de contenido** (barra "Buscar dentro del contenido" que
 consulta el índice `tsvector` y muestra "N resultados por contenido"), un
 gestor de **plantillas** (subir/listar/borrar) y un selector "Partir de una
 plantilla" en el modal de nuevo documento (el archivo se vuelve opcional
-cuando se elige plantilla).
+cuando se elige plantilla). Cada versión trae además un botón **"Verificar
+integridad"** que recalcula el SHA-256 en vivo y lo contrasta con el hash
+registrado y con los sellos de firma — el argumento de auditoría forense
+visible para el propio cliente.
 
 ## Pendiente
 

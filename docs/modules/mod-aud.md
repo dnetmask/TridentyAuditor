@@ -13,15 +13,20 @@ con la misma exigencia de evidencia real que el resto de la plataforma.
 - **AuditProgram**: una auditoría planeada o ejecutada — título, alcance,
   dominio opcional del Anexo A (`domain_id`, para auditorías acotadas como
   "Auditoría A.8 Q1 2026"), auditor asignado, fecha planeada/ejecutada y
-  estado (`planned` / `in_progress` / `completed`). Plano de datos del tenant
-  (RLS).
+  estado (`planned` / `in_progress` / `completed`). Al cerrar la auditoría se
+  registra la **evaluación del auditor líder** (`auditor_score` 1..5 +
+  `auditor_evaluation` en texto) — paridad con la "Evaluación de auditores"
+  de Kawak, sin submódulo aparte. Plano de datos del tenant (RLS).
 - **AuditFinding**: un hallazgo de una auditoría, con el CAPA guardado en la
   misma fila — mismo patrón que `Risk` en MOD·RSK, que guarda tratamiento y
   residual junto al riesgo en vez de en una tabla aparte. Campos: control
   relacionado (opcional), clasificación (`major_nc` / `minor_nc` /
   `observation` / `improvement`), descripción, causa raíz, acción
   correctiva, responsable, fecha de vencimiento, estado (`open` /
-  `in_progress` / `closed`), evidencia de cierre y `closed_at`.
+  `in_progress` / `closed`), **avance de la acción** (`progress_pct` 0..100)
+  y **costo estimado** (`estimated_cost`) — el seguimiento tipo "Mejoramiento
+  Continuo", ligado al hallazgo (no a un motor transversal desacoplado del
+  control) —, evidencia de cierre y `closed_at`.
 
 ## Reglas de negocio
 
@@ -35,6 +40,12 @@ con la misma exigencia de evidencia real que el resto de la plataforma.
   observación necesita algo que demuestre que se atendió.
 - Reabrir un hallazgo (`status` distinto de `closed`) limpia `closed_at`
   automáticamente.
+- **Cerrar un hallazgo lo lleva al 100% de avance** (`progress_pct`): una
+  acción CAPA cerrada está, por definición, completa.
+- **La evaluación del auditor solo se registra al cerrar la auditoría.** Un
+  `PATCH` con `auditor_score`/`auditor_evaluation` sobre una auditoría que no
+  quede en estado `completed` se rechaza con 422 — el puntaje refleja una
+  auditoría ejecutada, no una planeada.
 - Crear un hallazgo valida que la auditoría (`audit_id`) exista y sea del
   tenant — no se puede colgar un hallazgo de una auditoría ajena o
   inexistente (404).
@@ -51,11 +62,11 @@ Todos requieren `Authorization: Bearer <jwt>` de un tenant.
 |---|---|---|
 | POST | `/api/v1/audit/programs` | Crea una auditoría (`tenant_admin`, `internal_auditor`) |
 | GET | `/api/v1/audit/programs` | Lista las auditorías del tenant |
-| PATCH | `/api/v1/audit/programs/{id}` | Actualiza estado, fechas, auditor, dominio |
-| POST | `/api/v1/audit/findings` | Crea un hallazgo bajo una auditoría |
+| PATCH | `/api/v1/audit/programs/{id}` | Actualiza estado, fechas, auditor, dominio y (al cerrar) la evaluación del auditor |
+| POST | `/api/v1/audit/findings` | Crea un hallazgo bajo una auditoría (acepta `progress_pct` y `estimated_cost`) |
 | GET | `/api/v1/audit/findings?audit_id=` | Lista hallazgos, opcionalmente filtrados por auditoría |
-| PATCH | `/api/v1/audit/findings/{id}` | Actualiza CAPA/estado/evidencia (valida el cierre) |
-| GET | `/api/v1/audit/summary` | Conteos: auditorías, hallazgos por estado y por clasificación mayor/menor |
+| PATCH | `/api/v1/audit/findings/{id}` | Actualiza CAPA/estado/evidencia/avance/costo (valida el cierre) |
+| GET | `/api/v1/audit/summary` | Conteos: auditorías, hallazgos por estado y clasificación + avance promedio y costo estimado de las CAPA abiertas |
 
 ## Pendiente
 

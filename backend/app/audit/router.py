@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.audit import schemas, service
-from app.audit.service import FindingNotFound, InvalidFinding, ProgramNotFound
+from app.audit.service import FindingNotFound, InvalidFinding, InvalidProgram, ProgramNotFound
 from app.core.security import TenantPrincipal, decode_tenant_token, get_tenant_db, require_tenant_roles
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit (MOD·AUD)"])
@@ -40,6 +40,8 @@ def update_program(
         return service.update_program(db, principal.tenant_id, program_id, **payload.model_dump())
     except ProgramNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Auditoría no encontrada") from exc
+    except InvalidProgram as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
 
 
 @router.post("/findings", response_model=schemas.AuditFindingRead, status_code=status.HTTP_201_CREATED)

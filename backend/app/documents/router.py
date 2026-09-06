@@ -620,6 +620,27 @@ def download_version_file(
     )
 
 
+@router.get(
+    "/{document_id}/versions/{version_number}/verify",
+    response_model=schemas.VersionIntegrityRead,
+)
+def verify_version_integrity(
+    document_id: uuid.UUID,
+    version_number: int,
+    db: Session = Depends(get_tenant_db),
+    principal: TenantPrincipal = Depends(decode_tenant_token),
+):
+    """Verifica la integridad de la versión: recalcula el SHA-256 del binario
+    y lo compara con el hash registrado al subir y con el sello de cada firma.
+    A la vista del cliente — el argumento de auditoría forense que en un gestor
+    documental comercial no suele ser visible para el usuario final.
+    """
+    try:
+        return service.verify_version(db, principal.tenant_id, document_id, version_number)
+    except (DocumentNotFound, VersionNotFound) as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Versión no encontrada") from exc
+
+
 @router.post("/{document_id}/versions/{version_number}/submit", response_model=schemas.DocumentVersionRead)
 def submit_for_review(
     document_id: uuid.UUID,

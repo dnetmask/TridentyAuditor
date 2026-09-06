@@ -496,6 +496,46 @@ def get_version_file(
     return version, path
 
 
+def verify_version(
+    db: Session, tenant_id: str, document_id: uuid.UUID, version_number: int
+) -> dict:
+    """Verificación de integridad a la vista del cliente (COMP-D).
+
+    Recalcula el SHA-256 del binario en almacenamiento y lo compara con el
+    hash registrado al subir, más los sellos de cada firma. A diferencia de
+    ``get_version_file``, no lanza excepción ante un desajuste: reporta el
+    resultado para que la UI muestre un "verificado / no coincide" — el
+    argumento de auditoría forense que en Kawak no es visible al usuario.
+    """
+    version = _get_version(db, tenant_id, document_id, version_number)
+    expected = version.file_sha256
+    path = storage.path_for(version.storage_ref)
+    file_present = path.is_file()
+    actual = _file_sha256(path.read_bytes()) if file_present else None
+    has_hash = expected is not None
+    verified = bool(has_hash and file_present and actual == expected)
+    approvals = [
+        {
+            "step": a.step.value,
+            "signed_by": a.signed_by,
+            "signed_at": a.signed_at,
+            "file_sha256": a.file_sha256,
+            "matches_current": (a.file_sha256 == actual) if (a.file_sha256 and actual) else None,
+        }
+        for a in sorted(version.approvals, key=lambda a: a.signed_at)
+    ]
+    return {
+        "version_number": version.version_number,
+        "algorithm": "SHA-256",
+        "expected_sha256": expected,
+        "actual_sha256": actual,
+        "has_hash": has_hash,
+        "file_present": file_present,
+        "verified": verified,
+        "approvals": approvals,
+    }
+
+
 def required_steps(document: Document) -> list[ApprovalStep]:
     """Pasos de firma que exige este documento, en orden.
 

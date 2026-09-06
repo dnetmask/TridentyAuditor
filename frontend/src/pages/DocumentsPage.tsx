@@ -15,6 +15,7 @@ import type {
   DocumentOrigin,
   DocumentTemplate,
   DocumentVersion,
+  VersionIntegrity,
 } from "../api/types";
 
 function formatFileSize(bytes: number | null): string {
@@ -525,6 +526,83 @@ function isViewable(contentType: string | null): boolean {
   );
 }
 
+// Verificación de integridad a la vista del cliente (COMP-D): recalcula el
+// SHA-256 del binario y lo compara con el hash registrado y con los sellos de
+// firma. El argumento de auditoría forense que en Kawak no es visible al
+// usuario final.
+function VersionIntegrityButton({
+  token,
+  documentId,
+  versionNumber,
+}: {
+  token: string;
+  documentId: string;
+  versionNumber: number;
+}) {
+  const [result, setResult] = useState<VersionIntegrity | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function check() {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(await api.verifyVersionIntegrity(token, documentId, versionNumber));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo verificar");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const fmt = (iso: string) => new Date(iso).toLocaleString();
+
+  return (
+    <>
+      <button className="btn btn-secondary btn-sm" disabled={loading} onClick={check}>
+        {loading ? "Verificando…" : "Verificar integridad"}
+      </button>
+      {error && <span className="review-overdue">{error}</span>}
+      {result && (
+        <div className="integrity-box">
+          <div className={`integrity-verdict ${result.verified ? "ok" : "bad"}`}>
+            {result.verified ? "✔ Íntegro" : result.has_hash ? "✘ No coincide" : "Sin hash registrado"}
+            <span className="muted" style={{ fontWeight: 400, fontSize: "0.78rem" }}>
+              · {result.algorithm}
+            </span>
+          </div>
+          {result.has_hash && (
+            <>
+              <div style={{ marginTop: "0.4rem" }}>
+                <span className="muted">Registrado al subir:</span>
+                <div className="integrity-hash">{result.expected_sha256}</div>
+              </div>
+              <div style={{ marginTop: "0.25rem" }}>
+                <span className="muted">Recalculado ahora:</span>
+                <div className="integrity-hash">{result.actual_sha256 ?? "— archivo ausente —"}</div>
+              </div>
+            </>
+          )}
+          {result.approvals.length > 0 && (
+            <div style={{ marginTop: "0.5rem" }}>
+              <span className="muted">Sellos de firma:</span>
+              <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.1rem" }}>
+                {result.approvals.map((a, i) => (
+                  <li key={i}>
+                    {a.step === "security" ? "Aprobó" : a.step === "area_manager" ? "Revisó" : a.step}{" "}
+                    · {a.signed_by} · {fmt(a.signed_at)}{" "}
+                    {a.matches_current === true ? "✔" : a.matches_current === false ? "✘" : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 // Panel de copia controlada: los tres nombres que el auditor pide ver.
 // Elaboró = quien subió la versión; Revisó = firma del gerente de área
 // (Fase 2); Aprobó = firma de seguridad de la información (o el approved_by
@@ -686,6 +764,9 @@ function DocumentDetailPanel({
               <button className="btn btn-secondary btn-sm" onClick={() => onDownload(doc.id, v.version_number)}>
                 Descargar
               </button>
+            )}
+            {v.original_filename && (
+              <VersionIntegrityButton token={token} documentId={doc.id} versionNumber={v.version_number} />
             )}
             {!retired && v.status === "draft" && canWrite && (
               <button

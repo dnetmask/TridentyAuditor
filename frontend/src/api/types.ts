@@ -358,11 +358,24 @@ export interface DashboardOverview {
     review_upcoming: number;
     pending_approval: number;
   };
+  documental_hygiene: DocumentHygiene;
   risks: { total: number; open: number; treating: number; closed: number };
   audits: { programs: number; findings_total: number; findings_open: number; findings_closed: number };
   legal: { total: number; compliant: number; partial: number; non_compliant: number; not_evaluated: number };
   soa: { total: number; applicable: number };
   processes: { total: number };
+}
+
+export interface DocumentHygiene {
+  total: number;
+  scheduled: number;
+  unscheduled: number;
+  overdue: number;
+  upcoming: number;
+  current: number;
+  pct_current: number;
+  avg_implementation_days: number;
+  implemented_docs: number;
 }
 
 // --- MOD·LEG (matriz de requisitos legales) ---
@@ -427,6 +440,8 @@ export interface AuditProgram {
   planned_date: string | null;
   executed_date: string | null;
   status: AuditStatus;
+  auditor_score: number | null;
+  auditor_evaluation: string | null;
   created_at: string;
 }
 
@@ -447,6 +462,8 @@ export interface AuditFinding {
   due_date: string | null;
   status: FindingStatus;
   evidence_document_id: string | null;
+  progress_pct: number;
+  estimated_cost: number | null;
   closed_at: string | null;
   created_at: string;
 }
@@ -459,4 +476,27 @@ export interface AuditSummary {
   closed_findings: number;
   major_nc: number;
   minor_nc: number;
+  capa_open_avg_progress: number;
+  capa_open_estimated_cost: number;
+}
+
+// --- MOD·DOC — verificación de integridad (COMP-D) ---
+
+export interface ApprovalSeal {
+  step: string;
+  signed_by: string;
+  signed_at: string;
+  file_sha256: string | null;
+  matches_current: boolean | null;
+}
+
+export interface VersionIntegrity {
+  version_number: number;
+  algorithm: string;
+  expected_sha256: string | null;
+  actual_sha256: string | null;
+  has_hash: boolean;
+  file_present: boolean;
+  verified: boolean;
+  approvals: ApprovalSeal[];
 }

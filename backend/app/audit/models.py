@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -61,6 +61,11 @@ class AuditProgram(Base):
         nullable=False,
         default=AuditStatus.PLANNED,
     )
+    # Evaluación del auditor líder (COMP-A): se diligencia al cerrar la
+    # auditoría — un puntaje 1..5 y un comentario. Paridad con la "Evaluación
+    # de auditores" de Kawak, sin submódulo aparte.
+    auditor_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    auditor_evaluation: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     domain: Mapped["Domain"] = relationship()  # noqa: F821 - registrado por app.frameworks.models
@@ -99,6 +104,11 @@ class AuditFinding(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Seguimiento de la acción CAPA (COMP-B): % de avance y costo estimado —
+    # paridad con "Mejoramiento Continuo" de Kawak, ligado al hallazgo (no a un
+    # motor transversal desacoplado del control).
+    progress_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    estimated_cost: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     status: Mapped[FindingStatus] = mapped_column(
         SAEnum(FindingStatus, name="finding_status", values_callable=_enum_values),
         nullable=False,

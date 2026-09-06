@@ -1258,3 +1258,74 @@ form.stacked {
   color: var(--color-text-muted);
   margin-bottom: 0.75rem;
 }
+
+/* --- CAPA: barra de avance (COMP-B) --- */
+.capa-progress { display: flex; align-items: center; gap: 0.5rem; }
+.capa-progress-track {
+  flex: 1;
+  min-width: 60px;
+  height: 8px;
+  background: var(--border, #e2e6ea);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.capa-progress-fill {
+  height: 100%;
+  background: var(--brand, #0f6e5f);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+.capa-progress-label { font-size: 0.75rem; color: var(--muted, #5b6560); min-width: 2.4rem; }
+
+/* --- Higiene documental (COMP-C) --- */
+.hygiene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.hygiene-cell {
+  border: 1px solid var(--border, #e2e6ea);
+  border-radius: 10px;
+  padding: 0.8rem 0.9rem;
+  background: var(--surface, #fff);
+}
+.hygiene-cell .num { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+.hygiene-cell .lbl { font-size: 0.76rem; color: var(--muted, #5b6560); }
+.hygiene-cell.warn .num { color: #b45309; }
+.hygiene-cell.bad .num { color: #b91c1c; }
+.hygiene-cell.good .num { color: #0f6e5f; }
+
+/* --- Verificación de integridad (COMP-D) --- */
+.integrity-box {
+  border: 1px solid var(--border, #e2e6ea);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  flex-basis: 100%;
+  width: 100%;
+}
+.integrity-verdict { font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+.integrity-verdict.ok { color: #0f6e5f; }
+.integrity-verdict.bad { color: #b91c1c; }
+.integrity-hash {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.72rem;
+  word-break: break-all;
+  color: var(--muted, #5b6560);
+}
+
+/* --- Banner de contraste guiado vs checklist (COMP-E) --- */
+.guided-banner {
+  border: 1px solid color-mix(in srgb, var(--brand, #0f6e5f) 30%, transparent);
+  background: color-mix(in srgb, var(--brand, #0f6e5f) 8%, transparent);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.guided-banner .gb-icon { font-size: 1.2rem; line-height: 1.4; }
+.guided-banner .gb-title { font-weight: 700; margin-bottom: 0.15rem; }
+.guided-banner .gb-text { font-size: 0.86rem; color: var(--muted, #5b6560); }

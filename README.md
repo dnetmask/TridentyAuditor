@@ -24,12 +24,12 @@ Fase 1 en construcción. Módulos implementados hasta ahora:
 | Autenticación y roles | — | ✅ Login real (email/contraseña), Super Admin / Admin del tenant / Auditor interno / Visualizador |
 | Control documental | MOD·DOC | ✅ Funcional (versionado, aprobación multinivel con dos firmas y sello SHA-256, acuse de recibo "leído y entendido", retención con disposición y legal hold, plantillas de documentos, búsqueda de texto completo en español, panel elaboró/revisó/aprobó, lectura inline, PDFs estampados "copia no controlada"/OBSOLETO, áreas, revisión programada, numeración automática, derogación) |
 | Matriz de requisitos legales | MOD·LEG | ✅ Funcional (registro legal/regulatorio/contractual con responsable, evidencia, calificación y nivel de cumplimiento — ISO 27001 cl. 4 / A.5.31) |
-| Mapa de procesos + panel | MOD·PRC | ✅ Funcional (árbol de procesos con documentos vinculados, visor embebido de documentos y dashboard de entrada con el estado del SGSI) |
+| Mapa de procesos + panel | MOD·PRC | ✅ Funcional (árbol de procesos con documentos vinculados, visor embebido de documentos y dashboard de entrada con el estado del SGSI + panel de higiene documental) |
 | Asistente paso a paso | MOD·WZD | ✅ Funcional (Ruta SGSI o Ruta CNO según la norma del tenant, evidencia obligatoria, desbloqueo por fase) |
 | Gestión de riesgos | MOD·RSK | ✅ Funcional (activos, matriz probabilidad×impacto, tratamiento, residual) |
 | SoA · Anexo A | MOD·SOA | ✅ Funcional (controles de la norma del tenant, exclusión con justificación, dueño) |
 | Indicador de cumplimiento | — | ✅ % de evidencia aprobada (SoA + asistente), visible en la barra superior |
-| Auditoría interna | MOD·AUD | ✅ Funcional (programa de auditoría, hallazgos clasificados, CAPA con cierre verificable) |
+| Auditoría interna | MOD·AUD | ✅ Funcional (programa de auditoría, hallazgos clasificados, CAPA con cierre verificable, % de avance y costo estimado por acción, evaluación del auditor al cerrar) |
 | Indicadores y revisión | MOD·KPI | ⏳ Fase 1, pendiente |
 | Capacitación y cultura | MOD·TRN | ⏳ Fase 1, pendiente |
 | Módulo NIST CSF 2.0 | MOD·NIST | ⏳ Fase 2 |

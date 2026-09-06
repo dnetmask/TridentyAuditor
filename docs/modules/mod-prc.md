@@ -49,12 +49,19 @@ llamada, para el tenant del token:
 - **Auditoría**: programas y hallazgos abiertos/cerrados.
 - **Requisitos legales**: por calificación (cumple / parcial / no cumple).
 - **SoA**: total y aplicables. **Procesos**: total.
+- **Higiene documental** (`documental_hygiene`): vencidos, por vencer, sin
+  revisión programada, % al día sobre los programados y promedio de días de
+  implementación (del alta del documento a la aprobación de su versión
+  vigente) — la lectura de "¿está al día?" que Kawak resuelve con un gauge de
+  "% vencidos". Complementa, no reemplaza, el indicador de cumplimiento: mide
+  vigencia/frescura, no madurez de implementación del SGSI.
 
 Es orquestación de solo lectura — no agrega lógica de negocio nueva. La
 pantalla `/panel` es la nueva página de llegada de los roles de tenant
 (antes era la Ruta SGSI): un medidor de cumplimiento global con sus
 componentes y una grilla de tarjetas que enlazan a cada módulo, con semáforo
-en revisiones vencidas y riesgos/hallazgos abiertos.
+en revisiones vencidas y riesgos/hallazgos abiertos, más un **panel de
+higiene documental** al pie.
 
 ## Pendiente
 

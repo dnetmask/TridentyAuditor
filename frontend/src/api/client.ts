@@ -445,6 +445,12 @@ export const api = {
       { method: "POST", token },
     ),
 
+  verifyVersionIntegrity: (token: string, documentId: string, versionNumber: number) =>
+    request<import("./types").VersionIntegrity>(
+      `/api/v1/documents/${documentId}/versions/${versionNumber}/verify`,
+      { token },
+    ),
+
   // --- MOD·WZD (asistente paso a paso) ---
   wizardInstantiate: (token: string) =>
     request<{ created: number }>("/api/v1/wizard/instantiate", { method: "POST", token }),
@@ -586,6 +592,8 @@ export const api = {
       planned_date: string | null;
       executed_date: string | null;
       status: import("./types").AuditStatus;
+      auditor_score: number | null;
+      auditor_evaluation: string | null;
     }>,
   ) =>
     request<import("./types").AuditProgram>(`/api/v1/audit/programs/${programId}`, {
@@ -611,6 +619,8 @@ export const api = {
       corrective_action?: string | null;
       owner_user_id?: string | null;
       due_date?: string | null;
+      progress_pct?: number;
+      estimated_cost?: number | null;
     },
   ) => request<import("./types").AuditFinding>("/api/v1/audit/findings", { method: "POST", token, body: payload }),
 
@@ -627,6 +637,8 @@ export const api = {
       due_date: string | null;
       status: import("./types").FindingStatus;
       evidence_document_id: string | null;
+      progress_pct: number;
+      estimated_cost: number | null;
     }>,
   ) =>
     request<import("./types").AuditFinding>(`/api/v1/audit/findings/${findingId}`, {

@@ -79,6 +79,19 @@ export function WizardPage() {
         </div>
       </div>
 
+      <div className="guided-banner">
+        <span className="gb-icon">🧭</span>
+        <div>
+          <div className="gb-title">No es un checklist plano: es una ruta que bloquea el avance sin evidencia</div>
+          <div className="gb-text">
+            Cada fase se desbloquea solo cuando la anterior queda completa con un documento
+            de evidencia aprobado — no basta con marcar una casilla. Un repositorio o una lista
+            de tareas suelta deja al usuario adivinar el orden; aquí la plataforma guía el
+            {" "}{cycleLabel} paso a paso y no deja saltarse la evidencia.
+          </div>
+        </div>
+      </div>
+
       {error && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
 
       {progress === null ? (
